@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+service Predict {
+    rpc predict (PredictRequest) returns (PredictResult) {}
+}
+
+message PredictRequest {
+    string captcha_img = 1;
+}
+
+message PredictResult {
+    string result = 1;
+    int32 code = 2;
+    bool success = 3;
+}
