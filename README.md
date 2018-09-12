@@ -9,11 +9,18 @@
 
 ## 1. Flask Version
 1. Linux
-    Deploy (Linux): gunicorn -c deploy.conf.py flask_server:app
+    Deploy (Linux): 
+    ```
+    pip install gunicorn
+    gunicorn -c deploy.conf.py flask_server:app
+    ```
     Port: 5000
 
 2. Windows
-    Deploy (Windows): python flask_server:app
+    Deploy (Windows): 
+    ```
+    python flask_server:app
+    ```
     Port: 19951
 
 ## 2. G-RPC Version
