@@ -1,24 +1,23 @@
-# Convolution: The number of layers is at least 3.
-# - The number below corresponds to the size of each layer of convolution.
 System:
   Device: 'gpu:0'
 
+# ModelName: Corresponding to the model file in the model directory,
+# - such as YourModelName.pb, fill in YourModelName here.
 # CharSet: [ALPHANUMERIC, ALPHANUMERIC_LOWER, ALPHANUMERIC_UPPER, NUMERIC].
 # ImageChannel: [1 - Gray Scale, 3 - RGB].
+# CharLength: Captcha Length
 Model:
-  ModelName: patchca
+  ModelName: YourModelName
   ImageChannel: 1
   CharLength: 4
-  CharSet: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
-               'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-               'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+  CharSet: ALPHANUMERIC
 
 # Magnification: [ x2 -> from size(50, 50) to size(100,100)].
 # OriginalColor: [false - Gray Scale, true - RGB].
 # Binaryzation: [-1: Off, >0 and < 255: On].
 # Smoothing: [-1: Off, >0: On].
-# Blur: [-1: Off, >0: On].
 # Invert [Binaryzation Color Invert]
+# Blur: [-1: Off, >0: On].
 Pretreatment:
   Magnification: 0
   OriginalColor: false

@@ -10,14 +10,11 @@ import yaml
 from character import *
 from exception import exception
 
-PROJECT_PATH = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-MODEL_CONFIG_NAME = 'model.yaml'
-MODEL_PATH = os.path.join(PROJECT_PATH, 'model')
-MODEL_CONFIG_PATH = os.path.join(PROJECT_PATH, MODEL_CONFIG_NAME)
+MODEL_CONFIG_PATH = 'model.yaml'
+MODEL_PATH = 'model'
 
 if not os.path.exists(MODEL_CONFIG_PATH):
-    exception('Configuration File "{}" No Found.'.format(MODEL_CONFIG_NAME))
+    exception('Configuration File "{}" No Found.'.format(MODEL_CONFIG_PATH))
 
 with open(MODEL_CONFIG_PATH, 'r', encoding="utf-8") as sys_fp:
     sys_stream = sys_fp.read()
@@ -45,7 +42,7 @@ DEVICE = cf_model['System'].get('Device')
 DEVICE = DEVICE if DEVICE else "cpu:0"
 
 CHAR_SET = cf_model['Model'].get('CharSet')
-GEN_CHAR_SET = char_set(CHAR_SET)
+GEN_CHAR_SET = char_set(CHAR_SET) if isinstance(CHAR_SET, str) else CHAR_SET
 CHAR_SET_LEN = len(GEN_CHAR_SET)
 
 TARGET_MODEL = cf_model['Model'].get('ModelName')
@@ -68,7 +65,6 @@ print('COMPILE_MODEL_PATH:', COMPILE_MODEL_PATH)
 print('Loading Configuration...')
 print('---------------------------------------------------------------------------------')
 # print("PROJECT_PARENT_PATH", PROJECT_PARENT_PATH)
-print("PROJECT_PATH", PROJECT_PATH)
 print('COMPILE_MODEL_PATH:', COMPILE_MODEL_PATH)
 print('CHAR_SET_LEN: {}, CHAR_SET: {}'.format(CHAR_SET_LEN, CHAR_SET))
 print('IMAGE_ORIGINAL_COLOR: {}'.format(IMAGE_ORIGINAL_COLOR))
