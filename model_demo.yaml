@@ -1,11 +1,14 @@
+# Device: [gpu:0, cpu:0]
 System:
   Device: 'gpu:0'
 
 # ModelName: Corresponding to the model file in the model directory,
 # - such as YourModelName.pb, fill in YourModelName here.
-# CharSet: [ALPHANUMERIC, ALPHANUMERIC_LOWER, ALPHANUMERIC_UPPER, NUMERIC].
+# CharSet: Provides a default optional built-in solution:
+# - [ALPHANUMERIC, ALPHANUMERIC_LOWER, ALPHANUMERIC_UPPER, NUMERIC]
+# - Or you can use your own customized char set like: ['a', '1', '2'].
 # ImageChannel: [1 - Gray Scale, 3 - RGB].
-# CharLength: Captcha Length
+# CharLength: Captcha Length.
 Model:
   ModelName: YourModelName
   ImageChannel: 1
@@ -18,6 +21,7 @@ Model:
 # Smoothing: [-1: Off, >0: On].
 # Invert [Binaryzation Color Invert]
 # Blur: [-1: Off, >0: On].
+# Resize: [WIDTH, HEIGHT].
 Pretreatment:
   Magnification: 0
   OriginalColor: false
@@ -25,3 +29,4 @@ Pretreatment:
   Smoothing: 3
   Invert: false
   Blur: 5
+#  Resize: [160, 60]

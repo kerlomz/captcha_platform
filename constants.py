@@ -38,6 +38,7 @@ class RequestException:
         self.INVALID_BASE64_STRING = dict(message='Invalid Base64 String', code=50002)
         self.IMAGE_DAMAGE = dict(message='Image Damage', code=50003)
 
+
     def find(self, _code):
         e = [value for value in vars(self).values()]
         _t = [i['message'] for i in e if i['code'] == _code]

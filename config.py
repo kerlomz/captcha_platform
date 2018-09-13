@@ -8,30 +8,37 @@ import sys
 import yaml
 
 from character import *
-from exception import exception
+from exception import exception, ConfigException
 
+MODEL_CONFIG_DEMO_PATH = 'model_demo.yaml'
 MODEL_CONFIG_PATH = 'model.yaml'
 MODEL_PATH = 'model'
 
+
 if not os.path.exists(MODEL_CONFIG_PATH):
-    exception('Configuration File "{}" No Found.'.format(MODEL_CONFIG_PATH))
+    exception(
+        'Configuration File "{}" No Found. '
+        'If it is used for the first time, please copy one from {} as {}'.format(
+            MODEL_CONFIG_PATH,
+            MODEL_CONFIG_DEMO_PATH,
+            MODEL_CONFIG_PATH
+        ), ConfigException.MODEL_CONFIG_PATH_NOT_EXIST
+    )
 
 with open(MODEL_CONFIG_PATH, 'r', encoding="utf-8") as sys_fp:
     sys_stream = sys_fp.read()
     cf_model = yaml.load(sys_stream)
 
 
-def char_set(_name):
-    if _name == 'NUMERIC':
-        return NUMBER
-    elif _name == 'ALPHANUMERIC':
-        return NUMBER + ALPHA_LOWER + ALPHA_UPPER
-    elif _name == 'ALPHANUMERIC_LOWER':
-        return NUMBER + ALPHA_LOWER
-    elif _name == 'ALPHANUMERIC_UPPER':
-        return NUMBER + ALPHA_UPPER
-    else:
-        return NUMBER + ALPHA_LOWER + ALPHA_UPPER
+def char_set(_type):
+    if isinstance(_type, list):
+        return _type
+    if isinstance(_type, str):
+        return SIMPLE_CHAR_SET.get(_type) if _type in SIMPLE_CHAR_SET.keys() else ConfigException.CHAR_SET_NOT_EXIST
+    exception(
+        "Character set configuration error, customized character set should be list type",
+        ConfigException.CHAR_SET_INCORRECT
+    )
 
 
 def __type(_object, _abbreviate=False):
@@ -42,7 +49,13 @@ DEVICE = cf_model['System'].get('Device')
 DEVICE = DEVICE if DEVICE else "cpu:0"
 
 CHAR_SET = cf_model['Model'].get('CharSet')
-GEN_CHAR_SET = char_set(CHAR_SET) if isinstance(CHAR_SET, str) else CHAR_SET
+GEN_CHAR_SET = char_set(CHAR_SET)
+if GEN_CHAR_SET == ConfigException.CHAR_SET_NOT_EXIST:
+    exception(
+        "The character set type does not exist, there is no character set named {}".format(CHAR_SET),
+        ConfigException.CHAR_SET_NOT_EXIST
+    )
+
 CHAR_SET_LEN = len(GEN_CHAR_SET)
 
 TARGET_MODEL = cf_model['Model'].get('ModelName')

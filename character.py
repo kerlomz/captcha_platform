@@ -7,3 +7,10 @@ ALPHA_UPPER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
                'V', 'W', 'X', 'Y', 'Z']
 ALPHA_LOWER = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
                'v', 'w', 'x', 'y', 'z']
+
+SIMPLE_CHAR_SET = dict(
+    NUMERIC=NUMBER,
+    ALPHANUMERIC=NUMBER + ALPHA_LOWER + ALPHA_UPPER,
+    ALPHANUMERIC_LOWER=NUMBER + ALPHA_LOWER,
+    ALPHANUMERIC_UPPER=NUMBER + ALPHA_UPPER
+)

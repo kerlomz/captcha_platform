@@ -12,7 +12,7 @@
     source bin/activate # to activate the current virtual environment.
     cd captcha_platform # captcha_platform is the project path.
     ```
-4. pip install -r requirements.txt
+4. ```pip install -r requirements.txt```
 5. Place your "model.yaml" in project path, and your model.pb in model folder (create if not exist)
 6. Deploy as follows
 
