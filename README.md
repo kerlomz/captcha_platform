@@ -59,6 +59,9 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
     - model
         - ***Model.pb
 
+# License
+This project use SATA License (Star And Thank Author License), so you have to star this project before using. Read the license carefully.
+
 # Introduction
 https://www.jianshu.com/p/fccd596ef023
 
