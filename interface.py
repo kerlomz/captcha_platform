@@ -15,7 +15,7 @@ from config import *
 from handler import preprocessing
 from predict import predict_func
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "cpu:0"
+os.environ['CUDA_VISIBLE_DEVICES'] = DEVICE
 sess = tf.Session()
 try:
     with tf.gfile.GFile(COMPILE_MODEL_PATH, "rb") as f:
@@ -23,7 +23,7 @@ try:
         graph_def.ParseFromString(f.read())
         _ = tf.import_graph_def(graph_def, name="")
 except NotFoundError:
-    print('The system cannot find the model specified.')
+    exception('The system cannot find the model specified.')
 
 init = tf.global_variables_initializer()
 sess.run(init)
