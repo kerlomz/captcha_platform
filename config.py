@@ -25,6 +25,14 @@ if not os.path.exists(MODEL_CONFIG_PATH):
         ), ConfigException.MODEL_CONFIG_PATH_NOT_EXIST
     )
 
+if not os.path.exists(MODEL_PATH):
+    os.makedirs(MODEL_PATH)
+    exception(
+        'For the first time, please put the trained model in the model directory.'
+        , ConfigException.MODEL_CONFIG_PATH_NOT_EXIST
+    )
+
+
 with open(MODEL_CONFIG_PATH, 'r', encoding="utf-8") as sys_fp:
     sys_stream = sys_fp.read()
     cf_model = yaml.load(sys_stream)
@@ -56,6 +64,9 @@ if GEN_CHAR_SET == ConfigException.CHAR_SET_NOT_EXIST:
         ConfigException.CHAR_SET_NOT_EXIST
     )
 
+CHAR_EXCLUDE = cf_model['Model'].get('CharExclude')
+
+GEN_CHAR_SET = [i for i in char_set(CHAR_SET) if i not in CHAR_EXCLUDE]
 CHAR_SET_LEN = len(GEN_CHAR_SET)
 
 TARGET_MODEL = cf_model['Model'].get('ModelName')
@@ -73,6 +84,12 @@ BLUR = cf_model['Pretreatment'].get('Blur')
 INVERT = cf_model['Pretreatment'].get('Invert')
 
 COMPILE_MODEL_PATH = os.path.join(MODEL_PATH, '{}.pb'.format(TARGET_MODEL))
+if not os.path.exists(COMPILE_MODEL_PATH):
+    exception(
+        '{} not found, please put the trained model in the model directory.'.format(COMPILE_MODEL_PATH)
+        , ConfigException.MODEL_CONFIG_PATH_NOT_EXIST
+    )
+
 
 print('COMPILE_MODEL_PATH:', COMPILE_MODEL_PATH)
 print('Loading Configuration...')
