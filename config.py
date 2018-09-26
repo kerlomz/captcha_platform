@@ -53,7 +53,8 @@ def __type(_object, _abbreviate=False):
     return re.findall(r"(?<=').*?(?=')", str(type(_object)))[0]
 
 
-DEVICE = cf_model['System'].get('Device')
+SYSTEM = cf_model.get('System')
+DEVICE = SYSTEM.get('Device') if SYSTEM else None
 DEVICE = DEVICE if DEVICE else "cpu:0"
 
 CHAR_SET = cf_model['Model'].get('CharSet')
@@ -74,14 +75,16 @@ TARGET_MODEL = cf_model['Model'].get('ModelName')
 MAX_CAPTCHA_LEN = cf_model['Model'].get('CharLength')
 
 IMAGE_CHANNEL = cf_model['Model'].get('ImageChannel')
-
 MAGNIFICATION = cf_model['Pretreatment'].get('Magnification')
-MAGNIFICATION = MAGNIFICATION if MAGNIFICATION and MAGNIFICATION > 0 and isinstance(MAGNIFICATION, int) else 1
 IMAGE_ORIGINAL_COLOR = cf_model['Pretreatment'].get('OriginalColor')
 BINARYZATION = cf_model['Pretreatment'].get('Binaryzation')
 SMOOTH = cf_model['Pretreatment'].get('Smoothing')
 BLUR = cf_model['Pretreatment'].get('Blur')
 INVERT = cf_model['Pretreatment'].get('Invert')
+RESIZE = cf_model['Pretreatment'].get('Resize')
+RESIZE = tuple(RESIZE) if RESIZE else None
+MAGNIFICATION = None if RESIZE else MAGNIFICATION
+MAGNIFICATION = MAGNIFICATION if MAGNIFICATION and MAGNIFICATION > 0 and isinstance(MAGNIFICATION, int) else 1
 
 COMPILE_MODEL_PATH = os.path.join(MODEL_PATH, '{}.pb'.format(TARGET_MODEL))
 if not os.path.exists(COMPILE_MODEL_PATH):

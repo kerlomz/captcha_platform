@@ -58,9 +58,14 @@ def predict_byte(image_bytes):
     data_stream = io.BytesIO(image_bytes)
     pil_image = PIL_Image.open(data_stream)
     origin_size = pil_image.size
-    define_size = (origin_size[0] * MAGNIFICATION, origin_size[1] * MAGNIFICATION)
-    if define_size != pil_image.size:
+    define_size = RESIZE if RESIZE else origin_size
+    if define_size != origin_size:
         pil_image = pil_image.resize(define_size)
+        origin_size = pil_image.size
+    define_size = (origin_size[0] * MAGNIFICATION, origin_size[1] * MAGNIFICATION)
+    if define_size != origin_size:
+        pil_image = pil_image.resize(define_size)
+
     captcha_image = preprocessing(
         pil_image,
         binaryzation=BINARYZATION,

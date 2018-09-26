@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import logging
 from flask import *
 from flask_caching import Cache
 from gevent import monkey
@@ -15,6 +16,7 @@ from signature import Signature
 # The order cannot be changed, it must be before the flask.
 monkey.patch_all()
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 sign = Signature()
 _except = RequestException()
