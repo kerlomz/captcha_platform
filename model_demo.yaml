@@ -37,3 +37,7 @@ Pretreatment:
   Invert: false
   Blur: 5
 #  Resize: [160, 60]
+
+Security:
+  AccessKey: ''
+  SecretKey: ''

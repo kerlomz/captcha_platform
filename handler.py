@@ -5,19 +5,17 @@
 import cv2
 import numpy as np
 
-from config import CHAR_SET_LEN, GEN_CHAR_SET
+
+def pos2char(char_idx, charset):
+    return charset[char_idx]
 
 
-def pos2char(char_idx):
-    return GEN_CHAR_SET[char_idx]
-
-
-def vec2text(vec):
+def vec2text(vec, charset_len, gen_charset):
     char_pos = vec.nonzero()[0]
     text = []
     for i, c in enumerate(char_pos):
-        char_idx = c % CHAR_SET_LEN
-        char_code = pos2char(char_idx)
+        char_idx = c % charset_len
+        char_code = pos2char(char_idx, gen_charset)
         text.append(char_code)
     return "".join(text)
 

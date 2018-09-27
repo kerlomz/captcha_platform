@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import io
 import base64
 import datetime
 import hashlib
 import time
+from config import ModelConfig
+from requests import Session, post
+from PIL import Image as PilImage
+from constants import ServerType
 
-import requests
+DEFAULT_HOST = "localhost"
 
 
 class Auth(object):
 
-    def __init__(self):
-        self._url = 'http://localhost:19951/captcha/auth/v2'
-        self._access_key = "C180130204197838"
-        self._secret_key = "62d7eb0d370e603acd651066236c878b"
+    def __init__(self, host: str, server_type: ServerType):
+        self._model = ModelConfig(print=False)
+        self._url = 'http://{}:{}/captcha/auth/v2'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
+        self._access_key = self._model.access_key
+        self._secret_key = self._model.secret_key
 
     def sign(self, args):
         """ MD5 signature
@@ -45,21 +51,21 @@ class Auth(object):
 
     def request(self, params):
         params = dict(params, **self.make_json(params))
-        return requests.post(self._url, json=params)
+        return post(self._url, json=params)
 
 
 class NoAuth(object):
-    def __init__(self):
-        self._url = 'http://localhost:19951/captcha/v1'
+    def __init__(self, host: str, server_type: ServerType):
+        self._url = 'http://{}:{}/captcha/v1'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
 
     def request(self, params):
-        return requests.post(self._url, json=params)
+        return post(self._url, json=params)
 
 
 class gRPC(object):
 
-    def __init__(self):
-        self._url = 'localhost:50054'
+    def __init__(self, host: str):
+        self._url = '{}:50054'.format(host)
 
     def request(self, image):
         import grpc
@@ -67,32 +73,51 @@ class gRPC(object):
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        print('G-RPC Request Start--')
         response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
-        print('G-RPC Request End--')
         return {"message": {"result": response.result}, "code": response.code, "success": response.success}
 
 
 if __name__ == '__main__':
 
     # Here you can replace it with a web request to get images in real time.
-
-    with open(r"E:\Task\Trains\patchca\2ck8_143247.jpg", "rb") as f:
+    with open(r"E:\Task\Trains\Lu_Trains\3A3A_15ee9dadd65900636f352698b92ba232.jpg", "rb") as f:
         img_bytes = f.read()
+
+    # # Here is the code for the network request.
+    # # Replace your own captcha url for testing.
+    # sess = Session()
+    # sess.headers = {
+    #     'user-agent': 'Chrome'
+    # }
+    # img_bytes = sess.get("http://***.com/captcha").content
+
+    # # Open the image for human eye comparison,
+    # # preview whether the recognition result is consistent.
+    # data_stream = io.BytesIO(img_bytes)
+    # pil_image = PilImage.open(data_stream)
+    # pil_image.show()
 
     api_params = {
         'image': base64.b64encode(img_bytes).decode(),
     }
 
-    for i in range(1000):
-        # API with authentication
-        resp = Auth().request(api_params)
-        print(resp.json())
+    for i in range(1):
+        # Tornado API with authentication
+        # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp.json())
 
-        # API without authentication
-        resp = NoAuth().request(api_params)
+        # Flask API with authentication
+        # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp.json())
+        #
+        # Tornado API without authentication
+        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp.json())
+
+        # Flask API without authentication
+        resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
         print(resp.json())
 
         # API by gRPC - The fastest way.
-        resp = gRPC().request(base64.b64encode(img_bytes).decode())
-        print(resp)
+        # resp = gRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
+        # print(resp)
