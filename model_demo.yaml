@@ -21,22 +21,16 @@ Model:
   CharLength: 4
   CharSet: ALPHANUMERIC
   CharExclude: []
+  ImageWidth: 150
+  ImageHeight: 50
 
-# Magnification: [ x2 -> from size(50, 50) to size(100,100)].
-# OriginalColor: [false - Gray Scale, true - RGB].
 # Binaryzation: [-1: Off, >0 and < 255: On].
 # Smoothing: [-1: Off, >0: On].
-# Invert [Binaryzation Color Invert]
 # Blur: [-1: Off, >0: On].
-# Resize: [WIDTH, HEIGHT].
 Pretreatment:
-  Magnification: 0
-  OriginalColor: false
-  Binaryzation: 240
-  Smoothing: 3
-  Invert: false
-  Blur: 5
-#  Resize: [160, 60]
+  Binaryzation: -1
+  Smoothing: -1
+  Blur: -1
 
 Security:
   AccessKey: ''

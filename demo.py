@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import io
+import os
 import base64
 import datetime
 import hashlib
@@ -14,13 +15,25 @@ from constants import ServerType
 DEFAULT_HOST = "localhost"
 
 
+def _image(path):
+    with open(path, "rb") as f:
+        img_bytes = f.read()
+
+    b64 = base64.b64encode(img_bytes).decode()
+    return {
+        'image': b64,
+    }
+
+
 class Auth(object):
 
     def __init__(self, host: str, server_type: ServerType):
-        self._model = ModelConfig(print=False)
+        self._model = ModelConfig(print_info=False)
         self._url = 'http://{}:{}/captcha/auth/v2'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
         self._access_key = self._model.access_key
         self._secret_key = self._model.secret_key
+        self.true_count = 0
+        self.total_count = 0
 
     def sign(self, args):
         """ MD5 signature
@@ -51,21 +64,43 @@ class Auth(object):
 
     def request(self, params):
         params = dict(params, **self.make_json(params))
-        return post(self._url, json=params)
+        return post(self._url, json=params).json()
+
+    def local_iter(self, image_list: dict):
+        for k, v in image_list.items():
+            code = self.request(v).get('message').get('result')
+            _true = str(code).lower() == str(k).lower()
+            if _true:
+                self.true_count += 1
+            self.total_count += 1
+            print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
 
 
 class NoAuth(object):
     def __init__(self, host: str, server_type: ServerType):
         self._url = 'http://{}:{}/captcha/v1'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
+        self.true_count = 0
+        self.total_count = 0
 
     def request(self, params):
-        return post(self._url, json=params)
+        return post(self._url, json=params).json()
+
+    def local_iter(self, image_list: dict):
+        for k, v in image_list.items():
+            code = self.request(v).get('message').get('result')
+            _true = str(code).lower() == str(k).lower()
+            if _true:
+                self.true_count += 1
+            self.total_count += 1
+            print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
 
 
-class gRPC(object):
+class GoogleRPC(object):
 
     def __init__(self, host: str):
         self._url = '{}:50054'.format(host)
+        self.true_count = 0
+        self.total_count = 0
 
     def request(self, image):
         import grpc
@@ -76,12 +111,21 @@ class gRPC(object):
         response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
         return {"message": {"result": response.result}, "code": response.code, "success": response.success}
 
+    def local_iter(self, image_list: dict):
+        for k, v in image_list.items():
+            code = self.request(v.get('image')).get('message').get('result')
+            _true = str(code).lower() == str(k).lower()
+            if _true:
+                self.true_count += 1
+            self.total_count += 1
+            print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
+
 
 if __name__ == '__main__':
 
     # Here you can replace it with a web request to get images in real time.
-    with open(r"E:\Task\Trains\Lu_Trains\3A3A_15ee9dadd65900636f352698b92ba232.jpg", "rb") as f:
-        img_bytes = f.read()
+    # with open(r"E:\***\***\***.jpg", "rb") as f:
+    #     img_bytes = f.read()
 
     # # Here is the code for the network request.
     # # Replace your own captcha url for testing.
@@ -97,27 +141,35 @@ if __name__ == '__main__':
     # pil_image = PilImage.open(data_stream)
     # pil_image.show()
 
-    api_params = {
-        'image': base64.b64encode(img_bytes).decode(),
-    }
+    # api_params = {
+    #     'image': base64.b64encode(img_bytes).decode(),
+    # }
 
     for i in range(1):
         # Tornado API with authentication
-        # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        # print(resp.json())
+        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp)
 
         # Flask API with authentication
-        # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        # print(resp.json())
+        # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp)
         #
         # Tornado API without authentication
-        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        # print(resp.json())
+        # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp)
 
         # Flask API without authentication
-        resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        print(resp.json())
+        # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp)
 
         # API by gRPC - The fastest way.
-        # resp = gRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
+        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
         # print(resp)
+
+        pass
+
+    # API by gRPC - The fastest way, Local batch version, only for self testing.
+    path = r"D:\***\***\***"
+    path_list = os.listdir(path)
+    batch = {i.split('_')[0].lower(): _image(os.path.join(path, i)) for i in path_list}
+    GoogleRPC(DEFAULT_HOST).local_iter(batch)

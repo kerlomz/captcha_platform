@@ -3,15 +3,23 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import numpy as np
 from config import ModelConfig
-from handler import vec2text
 
 
-def predict_func(captcha_image, _sess, _predict, _x, _keep_prob, model: ModelConfig):
-    text_list = _sess.run(_predict, feed_dict={_x: [captcha_image], _keep_prob: 1})
-    text = text_list[0].tolist()
-    vector = np.zeros(model.max_captcha_len * model.charset_len)
-    i = 0
-    for n in text:
-        vector[i * model.charset_len + n] = 1
-        i += 1
-    return vec2text(vector, model.charset_len, model.gen_charset)
+def decode_maps(charset):
+    return {i: char for i, char in enumerate(charset, 0)}
+
+
+def predict_func(captcha_image, _sess, dense_decoded, _x, model: ModelConfig):
+    captcha_image = np.reshape(captcha_image, [model.image_height, model.image_width, 1])
+    dense_decoded_code = _sess.run(dense_decoded, feed_dict={_x: np.asarray([captcha_image])})
+    decoded_expression = []
+    for item in dense_decoded_code:
+        expression = ''
+
+        for i in item:
+            if i == -1:
+                expression += ''
+            else:
+                expression += decode_maps(model.gen_charset)[i]
+        decoded_expression.append(expression)
+    return decoded_expression[0]

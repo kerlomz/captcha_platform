@@ -59,7 +59,7 @@ class Model(object):
 
 class ModelConfig(Model):
 
-    def __init__(self, model_conf='model.yaml', model_path='model', print=True):
+    def __init__(self, model_conf='model.yaml', model_path='model', print_info=True):
         super().__init__(model_conf=model_conf, model_path=model_path)
         self.system = None
         self.device = None
@@ -68,15 +68,11 @@ class ModelConfig(Model):
         self.char_exclude = None
         self.charset_len = None
         self.target_model = None
-        self.max_captcha_len = None
-        self.image_channel = None
-        self.magnification = None
-        self.image_original_color = None
+        self.image_height = None
+        self.image_width = None
         self.binaryzation = None
         self.smooth = None
         self.blur = None
-        self.invert = None
-        self.resize = None
         self.mac_address = None
         self.access_key = None
         self.secret_key = None
@@ -86,7 +82,7 @@ class ModelConfig(Model):
         self.model_name_md5 = None
         self.cf_model = self.read_conf()
         self.assignment()
-        if print:
+        if print_info:
             self.print()
 
     def assignment(self):
@@ -110,21 +106,14 @@ class ModelConfig(Model):
 
         self.target_model = self.cf_model['Model'].get('ModelName')
 
-        self.max_captcha_len = self.cf_model['Model'].get('CharLength')
-
-        self.image_channel = self.cf_model['Model'].get('ImageChannel')
-        self.magnification = self.cf_model['Pretreatment'].get('Magnification')
-        self.image_original_color = self.cf_model['Pretreatment'].get('OriginalColor')
         self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
         self.blur = self.cf_model['Pretreatment'].get('Blur')
-        self.invert = self.cf_model['Pretreatment'].get('Invert')
-        self.resize = self.cf_model['Pretreatment'].get('Resize')
-        self.resize = tuple(self.resize) if self.resize else None
-        self.magnification = None if self.resize else self.magnification
-        self.magnification = self.magnification if self.magnification and self.magnification > 0 and isinstance(
-            self.magnification, int) else 1
+
         mac_address = hex(uuid.getnode())[2:]
+
+        self.image_height = self.cf_model['Model'].get('ImageHeight')
+        self.image_width = self.cf_model['Model'].get('ImageWidth')
 
         # ---AUTHORIZATION START---
         self.use_default_authorization = False
@@ -132,7 +121,7 @@ class ModelConfig(Model):
         if not self.authorization or not self.authorization.get('AccessKey') or not self.authorization.get('SecretKey'):
             self.use_default_authorization = True
             model_name_md5 = hashlib.md5(
-                "{}{}".format(self.target_model, self.max_captcha_len).encode('utf8')).hexdigest()
+                "{}".format(self.target_model).encode('utf8')).hexdigest()
             self.authorization = {
                 'AccessKey': model_name_md5[0: 16],
                 'SecretKey': hashlib.md5("{}{}".format(model_name_md5, mac_address).encode('utf8')).hexdigest()
@@ -154,8 +143,6 @@ class ModelConfig(Model):
         print('MODEL_NAME:', self.target_model)
         print('COMPILE_MODEL_PATH:', self.compile_model_path)
         print('CHAR_SET_LEN: {}, CHAR_SET: {}'.format(self.charset_len, self.charset))
-        print('IMAGE_ORIGINAL_COLOR: {}'.format(self.image_original_color))
-        print("MAX_CAPTCHA_LEN", self.max_captcha_len)
         print('------------------------------------------------SECURITY-----------------------------------------------')
         print('ACCESS_KEY: {}, SECRET_KEY: {}, USE_DEFAULT_CONFIG: {}'.format(
             self.access_key, self.secret_key, self.use_default_authorization))
