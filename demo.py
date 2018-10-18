@@ -73,7 +73,7 @@ class Auth(object):
             if _true:
                 self.true_count += 1
             self.total_count += 1
-            print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
+            print('result: {}, label: {}, flag: n{}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
 
 
 class NoAuth(object):
@@ -108,7 +108,7 @@ class GoogleRPC(object):
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
+        response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=','))
         return {"message": {"result": response.result}, "code": response.code, "success": response.success}
 
     def local_iter(self, image_list: dict):
@@ -124,8 +124,8 @@ class GoogleRPC(object):
 if __name__ == '__main__':
 
     # Here you can replace it with a web request to get images in real time.
-    # with open(r"E:\***\***\***.jpg", "rb") as f:
-    #     img_bytes = f.read()
+    with open(r"D:\***\***\***.jpg", "rb") as f:
+        img_bytes = f.read()
 
     # # Here is the code for the network request.
     # # Replace your own captcha url for testing.
@@ -140,11 +140,10 @@ if __name__ == '__main__':
     # data_stream = io.BytesIO(img_bytes)
     # pil_image = PilImage.open(data_stream)
     # pil_image.show()
-
-    # api_params = {
-    #     'image': base64.b64encode(img_bytes).decode(),
-    # }
-
+    api_params = {
+        'image': base64.b64encode(img_bytes).decode(),
+    }
+    print(api_params)
     for i in range(1):
         # Tornado API with authentication
         # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
@@ -163,13 +162,17 @@ if __name__ == '__main__':
         # print(resp)
 
         # API by gRPC - The fastest way.
-        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
-        # print(resp)
-
+        # If you want to identify multiple verification codes continuously, please do like this:
+        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes+b'\x00\xff\xff\xff\x00'+img_bytes).decode())
+        # b'\x00\xff\xff\xff\x00' is the split_flag defined in config.py
+        resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
+        print(resp)
         pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    path = r"D:\***\***\***"
-    path_list = os.listdir(path)
-    batch = {i.split('_')[0].lower(): _image(os.path.join(path, i)) for i in path_list}
-    GoogleRPC(DEFAULT_HOST).local_iter(batch)
+    # path = r"D:\***\***\***"
+    # path_list = os.listdir(path)
+    # print(path_list)
+    # batch = {i.split('_')[0].lower(): _image(os.path.join(path, i)) for i in path_list}
+    # print(batch)
+    # GoogleRPC(DEFAULT_HOST).local_iter(batch)

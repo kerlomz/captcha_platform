@@ -23,6 +23,7 @@ Model:
   CharExclude: []
   ImageWidth: 150
   ImageHeight: 50
+  SplitChar: ''
 
 # Binaryzation: [-1: Off, >0 and < 255: On].
 # Smoothing: [-1: Off, >0: On].

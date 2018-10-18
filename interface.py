@@ -4,7 +4,6 @@
 import cv2
 import base64
 import binascii
-import imghdr
 import io
 import numpy as np
 import tensorflow as tf
@@ -14,6 +13,7 @@ from pretreatment import preprocessing
 from config import *
 from constants import RequestException
 from predict import predict_func
+from utils import ImageUtils
 
 sess = tf.Session()
 init = tf.global_variables_initializer()
@@ -27,6 +27,7 @@ class Interface(object):
         self.predict = None
         self.x = None
         self.seq_len = None
+        self.batch_size = None
         try:
             with tf.gfile.GFile(model.compile_model_path, "rb") as f:
                 graph_def = tf.GraphDef()
@@ -40,20 +41,24 @@ class Interface(object):
         self.predict = sess.graph.get_tensor_by_name("lstm/output/predict:0")
         self.x = sess.graph.get_tensor_by_name('input:0')
         self.seq_len = sess.graph.get_tensor_by_name('lstm/seq_len:0')
+        self.batch_size = sess.graph.get_tensor_by_name('batch_size:0')
         print('Session Init')
 
-    def predict_b64(self, base64_img):
+    def predict_b64(self, base64_img, split_char=None):
         e = RequestException()
         # result, code, success = None, 200, True
         try:
-            image_bytes = base64.b64decode(base64_img.encode('utf-8'))
+            if isinstance(base64_img, list):
+                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img]
+            else:
+                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(self.model.split_flag)
         except binascii.Error:
             return e.INVALID_BASE64_STRING['message'], e.INVALID_BASE64_STRING['code'], False
-        img_type = imghdr.what(None, h=image_bytes)
-        if not img_type:
+        what_img = [ImageUtils.test_image(i) for i in bytes_batch]
+        if None in what_img:
             return e.INVALID_IMAGE_FORMAT['message'], e.INVALID_IMAGE_FORMAT['code'], False
         try:
-            result = self.predict_byte(image_bytes)
+            result = self.predict_byte(bytes_batch, split_char)
             return result, 200, True
         except OSError:
             return e.IMAGE_DAMAGE['message'], e.IMAGE_DAMAGE['code'], False
@@ -61,13 +66,17 @@ class Interface(object):
             print(_e)
             return e.IMAGE_SIZE_NOT_MATCH_GRAPH['message'], e.IMAGE_SIZE_NOT_MATCH_GRAPH['code'], False
 
-    def predict_byte(self, image_bytes):
+    def load_image(self, image_bytes):
         data_stream = io.BytesIO(image_bytes)
         pil_image = PIL_Image.open(data_stream).convert('RGB')
-
         image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-        image = preprocessing(image, self.model.binaryzation, self.model.smooth, self.model.blur).astype(np.float32) / 255.
-        image = cv2.resize(image, (self.model.image_width, self.model.image_height))
+        image = preprocessing(image, self.model.binaryzation, self.model.smooth, self.model.blur)
+        image = image.astype(np.float32) / 255.
+        return cv2.resize(image, (self.model.image_width, self.model.image_height))
+
+    def predict_byte(self, image_list, split_char=None):
+
+        image_batch = [self.load_image(i) for i in image_list]
 
         decoded, log_prob = tf.nn.ctc_beam_search_decoder(
             self.predict,
@@ -75,5 +84,5 @@ class Interface(object):
             merge_repeated=False,
         )
         dense_decoded = tf.sparse_tensor_to_dense(decoded[0], default_value=-1)
-        predict_text = predict_func(image, sess, dense_decoded, self.x, self.model)
+        predict_text = predict_func(image_batch, sess, dense_decoded, self.batch_size, self.x, self.model, split_char)
         return predict_text

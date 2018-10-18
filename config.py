@@ -64,6 +64,8 @@ class ModelConfig(Model):
         self.system = None
         self.device = None
         self.charset = None
+        self.split_flag = b'\x00\xff\xff\xff\x00'
+        self.split_char = None
         self.gen_charset = None
         self.char_exclude = None
         self.charset_len = None
@@ -105,6 +107,9 @@ class ModelConfig(Model):
         self.charset_len = len(self.gen_charset)
 
         self.target_model = self.cf_model['Model'].get('ModelName')
+
+        self.split_char = self.cf_model['Model'].get('SplitChar')
+        self.split_char = '' if not self.split_char else self.split_char
 
         self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')

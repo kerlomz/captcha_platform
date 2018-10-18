@@ -60,3 +60,4 @@ class ImageUtils(object):
         s = b'#define '
         if h[:len(s)] == s:
             return 'xbm'
+        return None
