@@ -50,7 +50,7 @@ class Interface(object):
         self.sess.close()
         del self.sess
 
-    def predict_b64(self, base64_img, func, split_char=None):
+    def predict_b64(self, base64_img, split_char=None):
         e = RequestException()
         # result, code, success = None, 200, True
         try:
