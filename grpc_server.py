@@ -11,6 +11,7 @@ import grpc_pb2_grpc
 import optparse
 from interface import Interface
 from config import ModelConfig
+from utils import ImageUtils
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -18,8 +19,9 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 class Predict(grpc_pb2_grpc.PredictServicer):
 
     def predict(self, request, context):
-        result, code, success = interface.predict_b64(request.captcha_img, request.split_char)
-        return grpc_pb2.PredictResult(result=result, success=success)
+        image_batch, status = ImageUtils(interface.model).get_image_batch(request.captcha_img)
+        result = interface.predict_byte(image_batch, request.split_char)
+        return grpc_pb2.PredictResult(result=result, success=status['success'], code=status['code'])
 
 
 def serve():

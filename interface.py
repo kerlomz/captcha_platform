@@ -11,7 +11,7 @@ from PIL import Image as PIL_Image
 from tensorflow.python.framework.errors_impl import NotFoundError
 from pretreatment import preprocessing
 from config import *
-from constants import RequestException
+from constants import Response
 from predict import predict_func
 from utils import ImageUtils
 
@@ -50,39 +50,7 @@ class Interface(object):
         self.sess.close()
         del self.sess
 
-    def predict_b64(self, base64_img, split_char=None):
-        e = RequestException()
-        # result, code, success = None, 200, True
-        try:
-            if isinstance(base64_img, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img]
-            else:
-                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(self.model.split_flag)
-        except binascii.Error:
-            return e.INVALID_BASE64_STRING['message'], e.INVALID_BASE64_STRING['code'], False
-        what_img = [ImageUtils.test_image(i) for i in bytes_batch]
-        if None in what_img:
-            return e.INVALID_IMAGE_FORMAT['message'], e.INVALID_IMAGE_FORMAT['code'], False
-        try:
-            result = self.predict_byte(bytes_batch, split_char)
-            return result, 200, True
-        except OSError:
-            return e.IMAGE_DAMAGE['message'], e.IMAGE_DAMAGE['code'], False
-        except ValueError as _e:
-            print(_e)
-            return e.IMAGE_SIZE_NOT_MATCH_GRAPH['message'], e.IMAGE_SIZE_NOT_MATCH_GRAPH['code'], False
-
-    def load_image(self, image_bytes):
-        data_stream = io.BytesIO(image_bytes)
-        pil_image = PIL_Image.open(data_stream).convert('RGB')
-        image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-        image = preprocessing(image, self.model.binaryzation, self.model.smooth, self.model.blur)
-        image = image.astype(np.float32) / 255.
-        return cv2.resize(image, (self.model.image_width, self.model.image_height))
-
-    def predict_byte(self, image_list, split_char=None):
-
-        image_batch = [self.load_image(i) for i in image_list]
+    def predict_byte(self, image_batch, split_char=None):
 
         decoded, log_prob = tf.nn.ctc_beam_search_decoder(
             self.predict,
@@ -90,5 +58,13 @@ class Interface(object):
             merge_repeated=False,
         )
         dense_decoded = tf.sparse_tensor_to_dense(decoded[0], default_value=-1)
-        predict_text = predict_func(image_batch, self.sess, dense_decoded, self.batch_size, self.x, self.model, split_char)
+        predict_text = predict_func(
+            image_batch,
+            self.sess,
+            dense_decoded,
+            self.batch_size,
+            self.x,
+            self.model,
+            split_char
+        )
         return predict_text

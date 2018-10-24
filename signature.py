@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 from functools import wraps
-from constants import RequestException, ServerType
+from constants import Response, ServerType
 from exception import *
 from utils import *
 
@@ -11,7 +11,7 @@ class Signature(object):
     """ api signature authentication """
 
     def __init__(self, server_type: ServerType):
-        self._except = RequestException()
+        self._except = Response()
         self._auth = []
         self._timestamp_expiration = 120
         self.request = None

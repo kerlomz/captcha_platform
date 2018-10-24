@@ -8,11 +8,12 @@ import optparse
 import tornado.ioloop
 from tornado.web import RequestHandler
 from logging import basicConfig, INFO
-from constants import RequestException
+from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import Interface
 from config import ModelConfig
+from utils import ImageUtils
 from signature import Signature, ServerType
 
 sign = Signature(ServerType.TORNADO)
@@ -29,7 +30,7 @@ class BaseHandler(RequestHandler):
 
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
-        self.exception = RequestException()
+        self.exception = Response()
 
     def data_received(self, chunk):
         pass
@@ -40,8 +41,6 @@ class BaseHandler(RequestHandler):
         except JSONDecodeError:
             data = self.request.body_arguments
         if not data:
-            raise tornado.web.HTTPError(400)
-        if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
         return data
 
@@ -61,16 +60,30 @@ class AuthHandler(BaseHandler):
     @sign.signature_required
     def post(self):
         data = self.parse_param()
-        result, code, success = interface.predict_b64(data['image'])
-        return self.write(json_encode(dict(message={"result": result}, code=code, success=success)))
+        if 'image' not in data.keys():
+            raise tornado.web.HTTPError(400)
+        split_char = data['split_char'] if 'split_char' in data else interface.model.split_char
+        # # You can separate the http service and the gRPC service like this:
+        # response = rpc_request(request.json['image'])
+        image_batch, response = ImageUtils(interface.model).get_image_batch(data['image'])
+        result = interface.predict_byte(image_batch, split_char)
+        response['message'] = result
+        return self.write(json_encode(response))
 
 
 class NoAuthHandler(BaseHandler):
 
     def post(self):
         data = self.parse_param()
-        result, code, success = interface.predict_b64(data['image'])
-        return self.write(json_encode(dict(message={"result": result}, code=code, success=success)))
+        if 'image' not in data.keys():
+            raise tornado.web.HTTPError(400)
+        split_char = data['split_char'] if 'split_char' in data else interface.model.split_char
+        # # You can separate the http service and the gRPC service like this:
+        # response = rpc_request(request.json['image'])
+        image_batch, response = ImageUtils(interface.model).get_image_batch(data['image'])
+        result = interface.predict_byte(image_batch, split_char)
+        response['message'] = result
+        return self.write(json_encode(response))
 
 
 def make_app():

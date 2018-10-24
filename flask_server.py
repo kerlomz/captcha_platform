@@ -12,17 +12,19 @@ from gevent import monkey
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from config import ModelConfig
-from constants import RequestException
+from utils import ImageUtils
+from constants import Response
 from exception import InvalidUsage
 from interface import Interface
 from signature import Signature, ServerType
 
 # The order cannot be changed, it must be before the flask.
 monkey.patch_all()
+
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 sign = Signature(ServerType.FLASK)
-_except = RequestException()
+_except = Response()
 
 
 @cache.cached(timeout=30)
@@ -70,8 +72,8 @@ def permission_denied(error=None):
 def rpc_request(image):
     channel = grpc.insecure_channel('localhost:50054')
     stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
-    return response.result, response.code, response.success
+    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=','))
+    return {'message': response.result, 'code': response.code, 'success': response.success}
 
 
 @app.route('/captcha/auth/v2', methods=['POST'])
@@ -83,14 +85,13 @@ def auth_request():
     """
     if not request.json or 'image' not in request.json:
         abort(400)
+
+    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model.split_char
     # # You can separate the http service and the gRPC service like this:
-    # result, code, success = rpc_request(request.json['image'])
-    result, code, success = interface.predict_b64(request.json['image'])
-    response = {
-        'message': {'result': result},
-        'code': code,
-        'success': success
-    }
+    # response = rpc_request(request.json['image'])
+    image_batch, response = ImageUtils(interface.model).get_image_batch(request.json['image'])
+    result = interface.predict_byte(image_batch, split_char)
+    response['message'] = result
     return json.dumps(response), 200
 
 
@@ -102,14 +103,13 @@ def common_request():
     """
     if not request.json or 'image' not in request.json:
         abort(400)
+
+    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model.split_char
     # # You can separate the http service and the gRPC service like this:
-    # result, code, success = rpc_request(request.json['image'])
-    result, code, success = interface.predict_b64(request.json['image'])
-    response = {
-        'message': {'result': result},
-        'code': code,
-        'success': success
-    }
+    # response = rpc_request(request.json['image'])
+    image_batch, response = ImageUtils(interface.model).get_image_batch(request.json['image'])
+    result = interface.predict_byte(image_batch, split_char)
+    response['message'] = result
     return json.dumps(response), 200
 
 

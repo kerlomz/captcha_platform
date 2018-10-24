@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\ngrpc.proto\"9\n\x0ePredictRequest\x12\x13\n\x0b\x63\x61ptcha_img\x18\x01 \x01(\t\x12\x12\n\nsplit_char\x18\x02 \x01(\t\">\n\rPredictResult\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04\x63ode\x18\x02 \x01(\x05\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x37\n\x07Predict\x12,\n\x07predict\x12\x0f.PredictRequest\x1a\x0e.PredictResult\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\ngrpc.proto\"M\n\x0ePredictRequest\x12\x13\n\x0b\x63\x61ptcha_img\x18\x01 \x01(\t\x12\x12\n\nsplit_char\x18\x02 \x01(\t\x12\x12\n\nmodel_name\x18\x03 \x01(\t\">\n\rPredictResult\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04\x63ode\x18\x02 \x01(\x05\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x37\n\x07Predict\x12,\n\x07predict\x12\x0f.PredictRequest\x1a\x0e.PredictResult\"\x00\x62\x06proto3')
 )
 
 
@@ -46,6 +46,13 @@ _PREDICTREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='model_name', full_name='PredictRequest.model_name', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -59,7 +66,7 @@ _PREDICTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=14,
-  serialized_end=71,
+  serialized_end=91,
 )
 
 
@@ -103,8 +110,8 @@ _PREDICTRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=73,
-  serialized_end=135,
+  serialized_start=93,
+  serialized_end=155,
 )
 
 DESCRIPTOR.message_types_by_name['PredictRequest'] = _PREDICTREQUEST
@@ -133,8 +140,8 @@ _PREDICT = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=137,
-  serialized_end=192,
+  serialized_start=157,
+  serialized_end=212,
   methods=[
   _descriptor.MethodDescriptor(
     name='predict',
