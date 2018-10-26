@@ -108,8 +108,8 @@ class GoogleRPC(object):
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=','))
-        return {"message": {"result": response.result}, "code": response.code, "success": response.success}
+        response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=',', model_name=""))
+        return {"message": response.result, "code": response.code, "success": response.success}
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():

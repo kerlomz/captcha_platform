@@ -10,8 +10,9 @@ import datetime
 import hashlib
 import numpy as np
 from PIL import Image as PIL_Image
-from constants import Response
+from constants import Response, Config
 from pretreatment import preprocessing
+from config import ModelConfig
 
 
 class SignUtils(object):
@@ -27,23 +28,40 @@ class SignUtils(object):
 
 class ImageUtils(object):
 
-    def __init__(self, model):
+    def __init__(self, model: ModelConfig):
         self.model = model
 
-    def get_image_batch(self, base64_img):
+    @staticmethod
+    def get_bytes_batch(base64_img):
         response = Response()
         try:
             if isinstance(base64_img, list):
                 bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img]
             else:
-                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(self.model.split_flag)
+                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(Config.split_flag)
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]
         if None in what_img:
             return None, response.INVALID_IMAGE_FORMAT
+        return bytes_batch, response.SUCCESS
+
+    @staticmethod
+    def get_image_batch(model: ModelConfig, bytes_batch):
+        # Note that there are two return objects here.
+        # 1.image_batch, 2.response
+
+        response = Response()
+
+        def load_image(image_bytes):
+            data_stream = io.BytesIO(image_bytes)
+            pil_image = PIL_Image.open(data_stream).convert('RGB')
+            image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
+            image = preprocessing(image, model.binaryzation, model.smooth, model.blur)
+            image = image.astype(np.float32) / 255.
+            return cv2.resize(image, (model.image_width, model.image_height))
         try:
-            image_batch = [self.load_image(i) for i in bytes_batch]
+            image_batch = [load_image(i) for i in bytes_batch]
             return image_batch, response.SUCCESS
         except OSError:
             return None, response.IMAGE_DAMAGE
@@ -51,13 +69,23 @@ class ImageUtils(object):
             print(_e)
             return None, response.IMAGE_SIZE_NOT_MATCH_GRAPH
 
-    def load_image(self, image_bytes):
+    @staticmethod
+    def pil_image(image_bytes):
         data_stream = io.BytesIO(image_bytes)
         pil_image = PIL_Image.open(data_stream).convert('RGB')
-        image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-        image = preprocessing(image, self.model.binaryzation, self.model.smooth, self.model.blur)
-        image = image.astype(np.float32) / 255.
-        return cv2.resize(image, (self.model.image_width, self.model.image_height))
+        return pil_image
+
+    @staticmethod
+    def size_of_image(image_bytes: bytes):
+        _null_size = tuple((-1, -1))
+        try:
+            data_stream = io.BytesIO(image_bytes)
+            size = PIL_Image.open(data_stream).size
+            return size
+        except OSError:
+            return _null_size
+        except ValueError:
+            return _null_size
 
     @staticmethod
     def test_image(h):

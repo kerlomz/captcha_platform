@@ -15,8 +15,9 @@ from config import ModelConfig
 from utils import ImageUtils
 from constants import Response
 from exception import InvalidUsage
-from interface import Interface
+from interface import Interface, InterfaceManager
 from signature import Signature, ServerType
+from graph_session import GraphSessionPool, GraphSession
 
 # The order cannot be changed, it must be before the flask.
 monkey.patch_all()
@@ -86,11 +87,23 @@ def auth_request():
     if not request.json or 'image' not in request.json:
         abort(400)
 
-    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model.split_char
-    # # You can separate the http service and the gRPC service like this:
-    # response = rpc_request(request.json['image'])
-    image_batch, response = ImageUtils(interface.model).get_image_batch(request.json['image'])
-    result = interface.predict_byte(image_batch, split_char)
+    bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
+
+    if not bytes_batch:
+        return json.dumps(response), 200
+
+    image_sample = bytes_batch[0]
+    image_size = ImageUtils.size_of_image(image_sample)
+    interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
+
+    image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+    if not image_batch:
+        return json.dumps(response), 200
+
+    result = interface.predict_batch(image_batch, split_char)
     response['message'] = result
     return json.dumps(response), 200
 
@@ -104,11 +117,23 @@ def common_request():
     if not request.json or 'image' not in request.json:
         abort(400)
 
-    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model.split_char
-    # # You can separate the http service and the gRPC service like this:
-    # response = rpc_request(request.json['image'])
-    image_batch, response = ImageUtils(interface.model).get_image_batch(request.json['image'])
-    result = interface.predict_byte(image_batch, split_char)
+    bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
+
+    if not bytes_batch:
+        return json.dumps(response), 200
+
+    image_sample = bytes_batch[0]
+    image_size = ImageUtils.size_of_image(image_sample)
+    interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+    split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
+
+    image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+    if not image_batch:
+        return json.dumps(response), 200
+
+    result = interface.predict_batch(image_batch, split_char)
     response['message'] = result
     return json.dumps(response), 200
 
@@ -128,7 +153,11 @@ if __name__ == "__main__":
     server_host = "0.0.0.0"
     model = ModelConfig(model_conf=model_conf, model_path=model_path)
     sign.set_auth([{'accessKey': model.access_key, 'secretKey': model.secret_key}])
-    interface = Interface(model)
+    default_model = ModelConfig(model_conf=model_conf, model_path=model_path)
+    default_session = GraphSession(default_model)
+    session_pool = GraphSessionPool(default_session)
+    default_interface = Interface(default_model, session_pool)
+    interface_manager = InterfaceManager(default_interface)
 
     print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
     server = WSGIServer((server_host, server_port), app, handler_class=WebSocketHandler)

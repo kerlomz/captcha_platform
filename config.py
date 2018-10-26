@@ -3,7 +3,6 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import os
 import re
-import sys
 import uuid
 import yaml
 import hashlib
@@ -64,7 +63,6 @@ class ModelConfig(Model):
         self.system = None
         self.device = None
         self.charset = None
-        self.split_flag = b'\x00\xff\xff\xff\x00'
         self.split_char = None
         self.gen_charset = None
         self.char_exclude = None
@@ -152,3 +150,10 @@ class ModelConfig(Model):
         print('ACCESS_KEY: {}, SECRET_KEY: {}, USE_DEFAULT_CONFIG: {}'.format(
             self.access_key, self.secret_key, self.use_default_authorization))
         print('-------------------------------------------------------------------------------------------------------')
+
+    def size_match(self, size_str):
+        return size_str == self.size_string
+
+    @property
+    def size_string(self):
+        return "{}x{}".format(self.image_width, self.image_height)

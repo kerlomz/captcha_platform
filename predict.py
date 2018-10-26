@@ -12,7 +12,6 @@ def decode_maps(charset):
 def predict_func(image_batch, _sess, dense_decoded, _batch_size, _x, model: ModelConfig, split_char=None):
     if split_char is None:
         split_char = model.split_char
-
     image_batch = [np.reshape(image, [model.image_height, model.image_width, 1]) for image in image_batch]
     dense_decoded_code = _sess.run(dense_decoded, feed_dict={
         _batch_size: len(image_batch),

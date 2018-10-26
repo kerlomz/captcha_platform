@@ -11,10 +11,11 @@ from logging import basicConfig, INFO
 from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
-from interface import Interface
+from interface import Interface, InterfaceManager
 from config import ModelConfig
 from utils import ImageUtils
 from signature import Signature, ServerType
+from graph_session import GraphSessionPool, GraphSession
 
 sign = Signature(ServerType.TORNADO)
 
@@ -62,11 +63,23 @@ class AuthHandler(BaseHandler):
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
-        split_char = data['split_char'] if 'split_char' in data else interface.model.split_char
-        # # You can separate the http service and the gRPC service like this:
-        # response = rpc_request(request.json['image'])
-        image_batch, response = ImageUtils(interface.model).get_image_batch(data['image'])
-        result = interface.predict_byte(image_batch, split_char)
+        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
+
+        if not bytes_batch:
+            self.write(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            return self.write(json_encode(response))
+
+        result = interface.predict_batch(image_batch, split_char)
         response['message'] = result
         return self.write(json_encode(response))
 
@@ -77,11 +90,26 @@ class NoAuthHandler(BaseHandler):
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
-        split_char = data['split_char'] if 'split_char' in data else interface.model.split_char
+
         # # You can separate the http service and the gRPC service like this:
         # response = rpc_request(request.json['image'])
-        image_batch, response = ImageUtils(interface.model).get_image_batch(data['image'])
-        result = interface.predict_byte(image_batch, split_char)
+        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
+
+        if not bytes_batch:
+            self.write(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            return self.write(json_encode(response))
+
+        result = interface.predict_batch(image_batch, split_char)
         response['message'] = result
         return self.write(json_encode(response))
 
@@ -106,9 +134,21 @@ if __name__ == "__main__":
     model_conf = opt.config
     model_path = opt.model_path
 
-    model = ModelConfig(model_conf=model_conf, model_path=model_path)
-    sign.set_auth([{'accessKey': model.access_key, 'secretKey': model.secret_key}])
-    interface = Interface(model)
+    default_model = ModelConfig(model_conf=model_conf, model_path=model_path)
+    default_session = GraphSession(default_model)
+    session_pool = GraphSessionPool(default_session)
+    default_interface = Interface(default_model, session_pool)
+    interface_manager = InterfaceManager(default_interface)
+
+    sign.set_auth([{'accessKey': default_model.access_key, 'secretKey': default_model.secret_key}])
+
+    # Example of loading multiple models at the same time
+    # - TODO This will be designed as a hot swapping, similar to the TensorFlow-Serving mode of operation.
+    # for model_conf in [ModelConfig(model_conf="model.yaml", model_path=model_path)]:
+    #     graph_sess = GraphSession(model_conf)
+    #     session_pool.add(graph_sess)
+    #     interface = Interface(model_conf, session_pool)
+    #     interface_manager.add(interface)
 
     server_host = "0.0.0.0"
     print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))

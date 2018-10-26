@@ -2,8 +2,9 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 
-import socket
-import uuid
+
+class Config:
+    split_flag = b'\x00\xff\xff\xff\x00'
 
 
 class ServerType(str):
