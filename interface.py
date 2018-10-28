@@ -67,17 +67,21 @@ class InterfaceManager(object):
             interface.destroy()
             self.group.remove(interface)
 
-    def get_by_size(self, size: str):
+    def remove_by_name(self, graph_name):
+        interface = self.get_by_name(graph_name, False)
+        self.remove(interface)
+
+    def get_by_size(self, size: str, return_default=True):
         for interface in self.group:
             if interface.size_str == size:
                 return interface
-        return self.default
+        return self.default if return_default else None
 
-    def get_by_key(self, key: str):
+    def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
             if interface.name == key:
                 return interface
-        return self.default
+        return self.default if return_default else None
 
     @property
     def default(self):

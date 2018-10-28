@@ -13,8 +13,8 @@ from logging import basicConfig, INFO
 from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
-from interface import Interface, InterfaceManager
-from config import ModelConfig, Config
+from interface import InterfaceManager
+from config import Config
 from utils import ImageUtils
 from signature import Signature, ServerType
 from watchdog.observers import Observer
@@ -139,7 +139,6 @@ def event_loop():
 
 
 if __name__ == "__main__":
-    basicConfig(level=INFO)
 
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
@@ -153,13 +152,14 @@ if __name__ == "__main__":
     graph_path = opt.graph_path
 
     system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+    logger = system_config.logger
     interface_manager = InterfaceManager()
     threading.Thread(target=event_loop).start()
 
     sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 
     server_host = "0.0.0.0"
-    print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
+    logger.info('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
     app = make_app()
     app.listen(server_port, server_host)
     try:

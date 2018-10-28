@@ -2,9 +2,21 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 from functools import wraps
-from constants import Response, ServerType
-from exception import *
+from constants import ServerType
 from utils import *
+
+
+class InvalidUsage(Exception):
+
+    def __init__(self, message, code=None):
+        Exception.__init__(self)
+        self.message = message
+        self.success = False
+        self.code = code
+
+    def to_dict(self):
+        rv = {'code': self.code, 'message': self.message, 'success': self.success}
+        return rv
 
 
 class Signature(object):

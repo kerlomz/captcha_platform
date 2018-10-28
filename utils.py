@@ -26,6 +26,18 @@ class SignUtils(object):
         return int(time.mktime(datetime.datetime.now().timetuple()))
 
 
+class PathUtils(object):
+
+    @staticmethod
+    def get_file_name(path: str):
+        if '/' in path:
+            return path.split('/')[-1]
+        elif '\\' in path:
+            return path.split('\\')[-1]
+        else:
+            return path
+
+
 class ImageUtils(object):
 
     def __init__(self, model: ModelConfig):
@@ -60,6 +72,7 @@ class ImageUtils(object):
             image = preprocessing(image, model.binaryzation, model.smooth, model.blur)
             image = image.astype(np.float32) / 255.
             return cv2.resize(image, (model.image_width, model.image_height))
+
         try:
             image_batch = [load_image(i) for i in bytes_batch]
             return image_batch, response.SUCCESS

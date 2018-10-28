@@ -9,9 +9,10 @@ from tensorflow.python.framework.errors_impl import NotFoundError
 class GraphSession(object):
     def __init__(self, model_conf: ModelConfig):
         self.model_conf = model_conf
+        self.logger = self.model_conf.logger
         self.size_str = self.model_conf.size_string
         self.model_name = self.model_conf.target_model
-        self.graph_name = "{}&{}".format(self.model_name, self.size_str)
+        self.graph_name = self.model_conf.graph_name
         self.model_type = self.model_conf.model_type
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
@@ -24,7 +25,7 @@ class GraphSession(object):
                 graph_def_file = f.read()
             self.graph_def.ParseFromString(graph_def_file)
         except NotFoundError:
-            print('The system cannot find the model specified.')
+            self.logger.error('The system cannot find the model specified.')
             self.sess = None
             return
 
@@ -32,7 +33,7 @@ class GraphSession(object):
             self.sess.run(tf.global_variables_initializer())
             _ = tf.import_graph_def(self.graph_def, name="")
 
-        print('TensorFlow Session {} Loaded.'.format(self.model_conf.target_model))
+        # self.logger.info('TensorFlow Session {} Loaded.'.format(self.model_conf.target_model))
 
     @property
     def session(self):
