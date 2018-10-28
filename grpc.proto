@@ -7,6 +7,7 @@ service Predict {
 message PredictRequest {
     string captcha_img = 1;
     string split_char = 2;
+    string model_name = 3;
 }
 
 message PredictResult {

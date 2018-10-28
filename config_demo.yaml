@@ -1,0 +1,11 @@
+# DefaultModel: This parameter is used to define the default loading model for this service.
+# SplitFlag: If you don't understand the meaning of this parameter, don't modify it.
+# - This parameter is used to stitch multiple binary images so that
+# - you can pass a batch of images at a time and return the predicted result.
+System:
+  DefaultModel: cy_9325
+  SplitFlag: b'\x00\xff\xff\xff\x00'
+
+Security:
+  AccessKey: ''
+  SecretKey: ''

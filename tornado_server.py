@@ -1,35 +1,40 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import time
 import grpc
 import grpc_pb2
 import grpc_pb2_grpc
 import optparse
+import threading
 import tornado.ioloop
 from tornado.web import RequestHandler
 from logging import basicConfig, INFO
-from constants import RequestException
+from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
-from interface import Interface
-from config import ModelConfig
+from interface import InterfaceManager
+from config import Config
+from utils import ImageUtils
 from signature import Signature, ServerType
+from watchdog.observers import Observer
+from event_handler import FileEventHandler
 
 sign = Signature(ServerType.TORNADO)
 
 
 def rpc_request(image):
-    channel = grpc.insecure_channel('[::]:50054')
+    channel = grpc.insecure_channel('127.0.0.1:50054')
     stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
-    return response.result, response.code, response.success
+    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=',', model_name=""))
+    return {"message": response.result, "code": response.code, "success": response.success}
 
 
 class BaseHandler(RequestHandler):
 
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
-        self.exception = RequestException()
+        self.exception = Response()
 
     def data_received(self, chunk):
         pass
@@ -40,8 +45,6 @@ class BaseHandler(RequestHandler):
         except JSONDecodeError:
             data = self.request.body_arguments
         if not data:
-            raise tornado.web.HTTPError(400)
-        if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
         return data
 
@@ -61,16 +64,57 @@ class AuthHandler(BaseHandler):
     @sign.signature_required
     def post(self):
         data = self.parse_param()
-        result, code, success = interface.predict_b64(data['image'])
-        return self.write(json_encode(dict(message={"result": result}, code=code, success=success)))
+        if 'image' not in data.keys():
+            raise tornado.web.HTTPError(400)
+        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
+
+        if not bytes_batch:
+            self.write(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            return self.write(json_encode(response))
+
+        result = interface.predict_batch(image_batch, split_char)
+        response['message'] = result
+        return self.write(json_encode(response))
 
 
 class NoAuthHandler(BaseHandler):
 
     def post(self):
         data = self.parse_param()
-        result, code, success = interface.predict_b64(data['image'])
-        return self.write(json_encode(dict(message={"result": result}, code=code, success=success)))
+        if 'image' not in data.keys():
+            raise tornado.web.HTTPError(400)
+
+        # # You can separate the http service and the gRPC service like this:
+        # response = rpc_request(data['image'])
+        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
+
+        if not bytes_batch:
+            self.write(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+
+        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            return self.write(json_encode(response))
+
+        result = interface.predict_batch(image_batch, split_char)
+        response['message'] = result
+        return self.write(json_encode(response))
 
 
 def make_app():
@@ -81,24 +125,41 @@ def make_app():
     ])
 
 
+def event_loop():
+    observer = Observer()
+    event_handler = FileEventHandler(system_config, model_path, interface_manager)
+    observer.schedule(event_handler, event_handler.model_conf_path, True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+
 if __name__ == "__main__":
-    basicConfig(level=INFO)
 
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
-    parser.add_option('-m', '--config', type="str", default='model.yaml', dest="config")
-    parser.add_option('-a', '--path', type="str", default='model', dest="model_path")
+    parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
+    parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
+    parser.add_option('-g', '--graph_path', type="str", default='graph', dest="graph_path")
     opt, args = parser.parse_args()
     server_port = opt.port
-    model_conf = opt.config
+    conf_path = opt.config
     model_path = opt.model_path
+    graph_path = opt.graph_path
 
-    model = ModelConfig(model_conf=model_conf, model_path=model_path)
-    sign.set_auth([{'accessKey': model.access_key, 'secretKey': model.secret_key}])
-    interface = Interface(model)
+    system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+    logger = system_config.logger
+    interface_manager = InterfaceManager()
+    threading.Thread(target=event_loop).start()
+
+    sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 
     server_host = "0.0.0.0"
-    print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
+    logger.info('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
     app = make_app()
     app.listen(server_port, server_host)
     try:

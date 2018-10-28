@@ -3,14 +3,18 @@
 # Author: kerlomz <kerlomz@gmail.com>
 
 import time
+import threading
 from concurrent import futures
 
 import grpc
 import grpc_pb2
 import grpc_pb2_grpc
 import optparse
-from interface import Interface
-from config import ModelConfig
+from utils import ImageUtils
+from interface import InterfaceManager
+from config import Config
+from event_handler import FileEventHandler
+from watchdog.observers import Observer
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -18,8 +22,22 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 class Predict(grpc_pb2_grpc.PredictServicer):
 
     def predict(self, request, context):
-        result, code, success = interface.predict_b64(request.captcha_img, request.split_char)
-        return grpc_pb2.PredictResult(result=result, success=success)
+        start_time = time.time()
+        bytes_batch, status = ImageUtils.get_bytes_batch(request.captcha_img)
+        if not bytes_batch:
+            grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+        image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
+
+        result = interface.predict_batch(image_batch, request.split_char)
+        logger.info('Predict Result[{}] - {} ms'.format(result, (time.time() - start_time) * 1000))
+        return grpc_pb2.PredictResult(result=result, success=status['success'], code=status['code'])
 
 
 def serve():
@@ -34,18 +52,36 @@ def serve():
         server.stop(0)
 
 
+def event_loop():
+    observer = Observer()
+    event_handler = FileEventHandler(system_config, model_path, interface_manager)
+    observer.schedule(event_handler, event_handler.model_conf_path, True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=50054, dest="port")
-    parser.add_option('-m', '--config', type="str", default='model.yaml', dest="config")
-    parser.add_option('-a', '--path', type="str", default='model', dest="model_path")
+    parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
+    parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
+    parser.add_option('-g', '--graph_path', type="str", default='graph', dest="graph_path")
     opt, args = parser.parse_args()
     server_port = opt.port
-    model_conf = opt.config
+    conf_path = opt.config
     model_path = opt.model_path
+    graph_path = opt.graph_path
+    system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+    interface_manager = InterfaceManager()
+    threading.Thread(target=event_loop).start()
 
+    logger = system_config.logger
     server_host = "0.0.0.0"
-    model = ModelConfig(model_conf=model_conf, model_path=model_path)
-    interface = Interface(model)
-    print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
+
+    logger.info('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
     serve()
