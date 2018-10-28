@@ -61,6 +61,7 @@ class FileEventHandler(FileSystemEventHandler):
                 inner_key = PathUtils.get_file_name(model_path)
                 graph_name = self.name_map.get(inner_key)
                 self.interface_manager.remove_by_name(graph_name)
+                self.name_map.pop(inner_key)
                 self.logger.info("Unload the model: {} ({})".format(graph_name, inner_key))
         except Exception as e:
             print(e)
