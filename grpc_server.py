@@ -18,7 +18,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 class Predict(grpc_pb2_grpc.PredictServicer):
 
     def predict(self, request, context):
-        result, code, success = interface.predict_b64(request.captcha_img)
+        result, code, success = interface.predict_b64(request.captcha_img, request.split_char)
         return grpc_pb2.PredictResult(result=result, success=success)
 
 
