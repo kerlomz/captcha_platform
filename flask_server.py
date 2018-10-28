@@ -17,7 +17,7 @@ from constants import Response
 from exception import InvalidUsage
 from interface import Interface, InterfaceManager
 from signature import Signature, ServerType
-from graph_session import GraphSessionPool, GraphSession
+from graph_session import GraphSession
 
 # The order cannot be changed, it must be before the flask.
 monkey.patch_all()
@@ -155,8 +155,7 @@ if __name__ == "__main__":
     sign.set_auth([{'accessKey': model.access_key, 'secretKey': model.secret_key}])
     default_model = ModelConfig(model_conf=model_conf, model_path=model_path)
     default_session = GraphSession(default_model)
-    session_pool = GraphSessionPool(default_session)
-    default_interface = Interface(default_model, session_pool)
+    default_interface = Interface(default_session)
     interface_manager = InterfaceManager(default_interface)
 
     print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))

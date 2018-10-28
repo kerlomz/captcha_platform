@@ -3,20 +3,18 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import tensorflow as tf
 
-from config import *
-from graph_session import GraphSessionPool
+from graph_session import GraphSession
 from predict import predict_func
 
 
 class Interface(object):
 
-    def __init__(self, model_conf: ModelConfig, model_sess_pool: GraphSessionPool):
-        self.model_conf = model_conf
-        self.model_sess_pool = model_sess_pool
+    def __init__(self, graph_session: GraphSession):
+        self.graph_sess = graph_session
+        self.model_conf = graph_session.model_conf
         self.size_str = self.model_conf.size_string
-        self.model_name = "{}&{}".format(self.model_conf.target_model, self.size_str)
-        self.model_sess = model_sess_pool.get(self.model_name)
-        self.sess = self.model_sess.sess
+        self.graph_name = self.graph_sess.graph_name
+        self.sess = self.graph_sess.session
         self.predict = self.sess.graph.get_tensor_by_name("lstm/output/predict:0")
         self.x = self.sess.graph.get_tensor_by_name('input:0')
         self.seq_len = self.sess.graph.get_tensor_by_name('lstm/seq_len:0')
@@ -31,14 +29,14 @@ class Interface(object):
 
     @property
     def name(self):
-        return self.model_name
+        return self.graph_name
 
     @property
     def size(self):
         return self.size_str
 
     def destroy(self):
-        self.model_sess_pool.destroy(self.model_name)
+        self.graph_sess.destroy()
 
     def predict_batch(self, image_batch, split_char=None):
         predict_text = predict_func(
@@ -55,14 +53,14 @@ class Interface(object):
 
 class InterfaceManager(object):
 
-    def __init__(self, default: Interface=None):
-        self.group = set()
-        self._default = default
+    def __init__(self, interface: Interface=None):
+        self.group = []
+        self.set_default(interface)
 
     def add(self, interface: Interface):
         if interface in self.group:
             return
-        self.group.add(interface)
+        self.group.append(interface)
 
     def remove(self, interface: Interface):
         if interface in self.group:
@@ -73,20 +71,23 @@ class InterfaceManager(object):
         for interface in self.group:
             if interface.size_str == size:
                 return interface
-        return self._default
+        return self.default
 
     def get_by_key(self, key: str):
         for interface in self.group:
             if interface.name == key:
                 return interface
-        return self._default
+        return self.default
 
     @property
     def default(self):
-        return self._default
+        return self.group[0] if len(self.group) > 0 else None
 
-    def set_default(self, interface):
-        self.remove(self._default)
-        self.group.add(interface)
-        self._default = interface
+    def set_default(self, interface: Interface):
+        if not interface:
+            return
+        if len(self.group) > 0:
+            self.group.pop(0)
+        self.group.insert(0, interface)
+
 

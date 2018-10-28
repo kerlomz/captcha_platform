@@ -10,10 +10,49 @@ from character import *
 from exception import exception, ConfigException
 
 
+class Config(object):
+    def __init__(self, conf_path: str, graph_path, model_path: str):
+        self.model_path = model_path
+        self.conf_path = conf_path
+        self.graph_path = graph_path
+        self.sys_cf = self.read_conf
+        self.access_key = None
+        self.secret_key = None
+        self.default_model = self.sys_cf['System']['DefaultModel']
+        self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
+        self.use_default_authorization = False
+        self.authorization = None
+        self.assignment()
+
+    def assignment(self):
+        # ---AUTHORIZATION START---
+        mac_address = hex(uuid.getnode())[2:]
+        self.use_default_authorization = False
+        self.authorization = self.sys_cf.get('Security')
+        if not self.authorization or not self.authorization.get('AccessKey') or not self.authorization.get('SecretKey'):
+            self.use_default_authorization = True
+            model_name_md5 = hashlib.md5(
+                "{}".format(self.default_model).encode('utf8')).hexdigest()
+            self.authorization = {
+                'AccessKey': model_name_md5[0: 16],
+                'SecretKey': hashlib.md5("{}{}".format(model_name_md5, mac_address).encode('utf8')).hexdigest()
+            }
+        self.access_key = self.authorization['AccessKey']
+        self.secret_key = self.authorization['SecretKey']
+        # ---AUTHORIZATION END---
+
+    @property
+    def read_conf(self):
+        with open(self.conf_path, 'r', encoding="utf-8") as sys_fp:
+            sys_stream = sys_fp.read()
+            return yaml.load(sys_stream)
+
+
 class Model(object):
 
-    def __init__(self, model_conf='model.yaml', model_path='model'):
-        self.model_path = model_path
+    def __init__(self, conf: Config, model_conf: str):
+        self.graph_path = conf.graph_path
+        self.model_path = conf.model_path
         self.model_conf = model_conf
         self.model_conf_demo = 'model_demo.yaml'
         self.verify()
@@ -50,6 +89,7 @@ class Model(object):
     def __type(self, _object, _abbreviate=False):
         return re.findall(r"(?<=').*?(?=')", str(type(_object)))[0]
 
+    @property
     def read_conf(self):
         with open(self.model_conf, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
@@ -58,8 +98,8 @@ class Model(object):
 
 class ModelConfig(Model):
 
-    def __init__(self, model_conf='model.yaml', model_path='model', print_info=True):
-        super().__init__(model_conf=model_conf, model_path=model_path)
+    def __init__(self, conf: Config, model_conf: str, print_info=True):
+        super().__init__(conf=conf, model_conf=model_conf)
         self.system = None
         self.device = None
         self.charset = None
@@ -68,6 +108,7 @@ class ModelConfig(Model):
         self.char_exclude = None
         self.charset_len = None
         self.target_model = None
+        self.model_type = None
         self.image_height = None
         self.image_width = None
         self.binaryzation = None
@@ -80,7 +121,7 @@ class ModelConfig(Model):
         self.authorization = None
         self.compile_model_path = None
         self.model_name_md5 = None
-        self.cf_model = self.read_conf()
+        self.cf_model = self.read_conf
         self.assignment()
         if print_info:
             self.print()
@@ -105,7 +146,7 @@ class ModelConfig(Model):
         self.charset_len = len(self.gen_charset)
 
         self.target_model = self.cf_model['Model'].get('ModelName')
-
+        self.model_type = self.cf_model['Model'].get('ModelType')
         self.split_char = self.cf_model['Model'].get('SplitChar')
         self.split_char = '' if not self.split_char else self.split_char
 
@@ -113,27 +154,10 @@ class ModelConfig(Model):
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
         self.blur = self.cf_model['Pretreatment'].get('Blur')
 
-        mac_address = hex(uuid.getnode())[2:]
-
         self.image_height = self.cf_model['Model'].get('ImageHeight')
         self.image_width = self.cf_model['Model'].get('ImageWidth')
 
-        # ---AUTHORIZATION START---
-        self.use_default_authorization = False
-        self.authorization = self.cf_model.get('Security')
-        if not self.authorization or not self.authorization.get('AccessKey') or not self.authorization.get('SecretKey'):
-            self.use_default_authorization = True
-            model_name_md5 = hashlib.md5(
-                "{}".format(self.target_model).encode('utf8')).hexdigest()
-            self.authorization = {
-                'AccessKey': model_name_md5[0: 16],
-                'SecretKey': hashlib.md5("{}{}".format(model_name_md5, mac_address).encode('utf8')).hexdigest()
-            }
-
-        self.access_key = self.authorization['AccessKey']
-        self.secret_key = self.authorization['SecretKey']
-        # ---AUTHORIZATION END---
-        self.compile_model_path = os.path.join(self.model_path, '{}.pb'.format(self.target_model))
+        self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
         if not os.path.exists(self.compile_model_path):
             exception(
                 '{} not found, please put the trained model in the model directory.'.format(self.compile_model_path)

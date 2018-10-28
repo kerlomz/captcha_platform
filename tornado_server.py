@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import time
 import grpc
 import grpc_pb2
 import grpc_pb2_grpc
 import optparse
+import threading
 import tornado.ioloop
 from tornado.web import RequestHandler
 from logging import basicConfig, INFO
@@ -12,19 +14,20 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import Interface, InterfaceManager
-from config import ModelConfig
+from config import ModelConfig, Config
 from utils import ImageUtils
 from signature import Signature, ServerType
-from graph_session import GraphSessionPool, GraphSession
+from watchdog.observers import Observer
+from event_handler import FileEventHandler
 
 sign = Signature(ServerType.TORNADO)
 
 
 def rpc_request(image):
-    channel = grpc.insecure_channel('[::]:50054')
+    channel = grpc.insecure_channel('127.0.0.1:50054')
     stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image))
-    return response.result, response.code, response.success
+    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=',', model_name=""))
+    return {"message": response.result, "code": response.code, "success": response.success}
 
 
 class BaseHandler(RequestHandler):
@@ -92,7 +95,7 @@ class NoAuthHandler(BaseHandler):
             raise tornado.web.HTTPError(400)
 
         # # You can separate the http service and the gRPC service like this:
-        # response = rpc_request(request.json['image'])
+        # response = rpc_request(data['image'])
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
@@ -122,33 +125,38 @@ def make_app():
     ])
 
 
+def event_loop():
+    observer = Observer()
+    event_handler = FileEventHandler(system_config, model_path, interface_manager)
+    observer.schedule(event_handler, event_handler.model_conf_path, True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+
 if __name__ == "__main__":
     basicConfig(level=INFO)
 
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
-    parser.add_option('-m', '--config', type="str", default='model.yaml', dest="config")
-    parser.add_option('-a', '--path', type="str", default='model', dest="model_path")
+    parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
+    parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
+    parser.add_option('-g', '--graph_path', type="str", default='graph', dest="graph_path")
     opt, args = parser.parse_args()
     server_port = opt.port
-    model_conf = opt.config
+    conf_path = opt.config
     model_path = opt.model_path
+    graph_path = opt.graph_path
 
-    default_model = ModelConfig(model_conf=model_conf, model_path=model_path)
-    default_session = GraphSession(default_model)
-    session_pool = GraphSessionPool(default_session)
-    default_interface = Interface(default_model, session_pool)
-    interface_manager = InterfaceManager(default_interface)
+    system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+    interface_manager = InterfaceManager()
+    threading.Thread(target=event_loop).start()
 
-    sign.set_auth([{'accessKey': default_model.access_key, 'secretKey': default_model.secret_key}])
-
-    # Example of loading multiple models at the same time
-    # - TODO This will be designed as a hot swapping, similar to the TensorFlow-Serving mode of operation.
-    # for model_conf in [ModelConfig(model_conf="model.yaml", model_path=model_path)]:
-    #     graph_sess = GraphSession(model_conf)
-    #     session_pool.add(graph_sess)
-    #     interface = Interface(model_conf, session_pool)
-    #     interface_manager.add(interface)
+    sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 
     server_host = "0.0.0.0"
     print('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
