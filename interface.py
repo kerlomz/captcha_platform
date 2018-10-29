@@ -14,6 +14,7 @@ class Interface(object):
         self.model_conf = graph_session.model_conf
         self.size_str = self.model_conf.size_string
         self.graph_name = self.graph_sess.graph_name
+        self.model_type = self.graph_sess.model_type
         self.sess = self.graph_sess.session
         self.predict = self.sess.graph.get_tensor_by_name("lstm/output/predict:0")
         self.x = self.sess.graph.get_tensor_by_name('input:0')
@@ -103,8 +104,6 @@ class InterfaceManager(object):
     def set_default(self, interface: Interface):
         if not interface:
             return
-        if len(self.group) > 0:
-            self.group.pop(0)
         self.group.insert(0, interface)
 
 
