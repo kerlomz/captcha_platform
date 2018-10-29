@@ -5,6 +5,10 @@ This project is only for deployment models, If you need to train the model, plea
 # Informed
 1. The default requirements.txt will install CPU version, Change "requirements.txt" from "TensorFlow" to "TensorFlow-GPU" to Switch to GPU version, Use the GPU version to install the corresponding CUDA and cuDNN.
 2. demo.py: An example of how to call a prediction method.
+3. The model folder folder is used to store model configuration files such as model.yaml.
+4. The graph folder is used to store compiled models such as model.pb
+5. The deployment service will automatically load all the models in the model configuration. When a new model configuration is added, the corresponding compilation model in the graph folder will be automatically loaded, so if you need to add it, please copy the corresponding compilation model to the graph path first, then add the model configuration.
+
 
 # Start
 1. Install the python 3.6 environment (with pip)
@@ -20,7 +24,7 @@ This project is only for deployment models, If you need to train the model, plea
 5. Place your "model.yaml" in project path, and your model.pb in model folder (create if not exist)
 6. Deploy as follows.
 
-## 1. Flask Version
+## 1. Http Version
 1. Linux
     Deploy (Linux/Mac): 
 
@@ -65,7 +69,12 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
         - tornado_server.py
         - demo.py
     - model
-        - ***Model.pb
+        - model-1.yaml
+        - model-2.yaml
+        - ...
+    - graph
+        - Model-1.pb
+        - ...
 
 # License
 This project use SATA License (Star And Thank Author License), so you have to star this project before using. Read the license carefully.
