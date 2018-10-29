@@ -82,7 +82,13 @@ class InterfaceManager(object):
         for interface in self.group:
             if interface.size_str == size and interface.model_type == model_type:
                 return interface
-        return self.get_by_size(size, return_default=return_default)
+        return self.get_by_type(size, return_default=return_default)
+
+    def get_by_type(self, model_type: str, return_default=True):
+        for interface in self.group:
+            if interface.model_type == model_type:
+                return interface
+        return self.default if return_default else None
 
     def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
