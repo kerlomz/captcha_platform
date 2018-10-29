@@ -54,7 +54,7 @@ class Interface(object):
 
 class InterfaceManager(object):
 
-    def __init__(self, interface: Interface=None):
+    def __init__(self, interface: Interface = None):
         self.group = []
         self.set_default(interface)
 
@@ -76,11 +76,17 @@ class InterfaceManager(object):
         for interface in self.group:
             if interface.size_str == size:
                 return interface
+        for interface in self.group:
+            if self.size_fuzzy_matching(interface.size_str, size):
+                return interface
         return self.default if return_default else None
 
     def get_by_type_size(self, size: str, model_type: str, return_default=True):
         for interface in self.group:
             if interface.size_str == size and interface.model_type == model_type:
+                return interface
+        for interface in self.group:
+            if self.size_fuzzy_matching(interface.size_str, size) and interface.model_type == model_type:
                 return interface
         return self.get_by_type(size, return_default=return_default)
 
@@ -95,6 +101,14 @@ class InterfaceManager(object):
             if interface.name == key:
                 return interface
         return self.default if return_default else None
+
+    @staticmethod
+    def size_fuzzy_matching(source_size: str, target_size: str):
+        _source_size = [int(int(_) / 10 + 0.5) * 10 for _ in source_size.split('x')]
+        _target_size = [int(int(_) / 10 + 0.5) * 10 for _ in target_size.split('x')]
+        if _source_size == _target_size:
+            return True
+        return False
 
     @property
     def default(self):
@@ -111,5 +125,3 @@ class InterfaceManager(object):
         if not interface:
             return
         self.group.insert(0, interface)
-
-
