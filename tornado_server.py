@@ -23,10 +23,15 @@ from event_handler import FileEventHandler
 sign = Signature(ServerType.TORNADO)
 
 
-def rpc_request(image):
+def rpc_request(image, model_name="", model_type=""):
     channel = grpc.insecure_channel('127.0.0.1:50054')
     stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=',', model_name=""))
+    response = stub.predict(grpc_pb2.PredictRequest(
+        image=image,
+        split_char=',',
+        model_name=model_name,
+        model_type=model_type
+    ))
     return {"message": response.result, "code": response.code, "success": response.success}
 
 
@@ -73,7 +78,13 @@ class AuthHandler(BaseHandler):
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
-        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+        size_string = "{}x{}".format(image_size[1], image_size[0])
+        if 'model_type' in data:
+            interface = interface_manager.get_by_type_size(size_string, data['model_type'])
+        elif 'model_name' in data:
+            interface = interface_manager.get_by_name(data['model_name'])
+        else:
+            interface = interface_manager.get_by_size(size_string)
 
         split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
 
@@ -90,12 +101,18 @@ class AuthHandler(BaseHandler):
 class NoAuthHandler(BaseHandler):
 
     def post(self):
+
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
 
         # # You can separate the http service and the gRPC service like this:
-        # response = rpc_request(data['image'])
+        # response = rpc_request(
+        #     data['image'],
+        #     data['model_name'] if 'model_name' in data else '',
+        #     data['model_type'] if 'model_type' in data else ''
+        # )
+
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
@@ -103,7 +120,13 @@ class NoAuthHandler(BaseHandler):
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
-        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+        size_string = "{}x{}".format(image_size[1], image_size[0])
+        if 'model_type' in data:
+            interface = interface_manager.get_by_type_size(size_string, data['model_type'])
+        elif 'model_name' in data:
+            interface = interface_manager.get_by_name(data['model_name'])
+        else:
+            interface = interface_manager.get_by_size(size_string)
 
         split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
 

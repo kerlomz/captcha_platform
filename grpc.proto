@@ -5,9 +5,10 @@ service Predict {
 }
 
 message PredictRequest {
-    string captcha_img = 1;
+    string image = 1;
     string split_char = 2;
     string model_name = 3;
+    string model_type = 4;
 }
 
 message PredictResult {

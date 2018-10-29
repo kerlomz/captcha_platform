@@ -13,8 +13,8 @@
 # - and set the characters to be excluded by CharExclude parameter.
 Model:
   ModelName: YourModelName
+  ModelType: YourModelType
   ImageChannel: 1
-  CharLength: 4
   CharSet: ALPHANUMERIC
   CharExclude: []
   ImageWidth: 150

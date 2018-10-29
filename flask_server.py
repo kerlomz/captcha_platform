@@ -72,11 +72,16 @@ def permission_denied(error=None):
     return jsonify(message=message, code=error.code, success=False)
 
 
-def rpc_request(image):
-    channel = grpc.insecure_channel('localhost:50054')
+def rpc_request(image, model_name="", model_type=""):
+    channel = grpc.insecure_channel('127.0.0.1:50054')
     stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=','))
-    return {'message': response.result, 'code': response.code, 'success': response.success}
+    response = stub.predict(grpc_pb2.PredictRequest(
+        image=image,
+        split_char=',',
+        model_name=model_name,
+        model_type=model_type
+    ))
+    return {"message": response.result, "code": response.code, "success": response.success}
 
 
 @app.route('/captcha/auth/v2', methods=['POST'])
@@ -96,7 +101,14 @@ def auth_request():
 
     image_sample = bytes_batch[0]
     image_size = ImageUtils.size_of_image(image_sample)
-    interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+    size_string = "{}x{}".format(image_size[1], image_size[0])
+
+    if 'model_type' in request.json:
+        interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
+    elif 'model_name' in request.json:
+        interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+    else:
+        interface = interface_manager.get_by_size(size_string)
 
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
 
@@ -126,7 +138,14 @@ def common_request():
 
     image_sample = bytes_batch[0]
     image_size = ImageUtils.size_of_image(image_sample)
-    interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+    size_string = "{}x{}".format(image_size[1], image_size[0])
+
+    if 'model_type' in request.json:
+        interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
+    elif 'model_name' in request.json:
+        interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+    else:
+        interface = interface_manager.get_by_size(size_string)
 
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
 

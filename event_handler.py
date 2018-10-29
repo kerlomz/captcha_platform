@@ -24,29 +24,52 @@ class FileEventHandler(FileSystemEventHandler):
         model_list = [os.path.join(self.model_conf_path, i) for i in model_list if i.endswith("yaml")]
         for model in model_list:
             self._add(model, is_first=True)
-        self.logger.info("Number of interfaces: {}".format(len(self.interface_manager.group)))
+        self.logger.info(
+            "\n - Number of interfaces: {}"
+            "\n - Current online interface: {}"
+            "\n - The default Interface is: {}".format(
+                len(self.interface_manager.group),
+                ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                self.interface_manager.default_name
+            ))
 
     def _add(self, src_path, is_first=False):
         try:
             model_path = str(src_path)
             if 'model_demo.yaml' in model_path:
+                self.logger.warning(
+                    "\n-------------------------------------------------------------------\n"
+                    "- Found that the model_demo.yaml file exists, \n"
+                    "- the loading is automatically ignored. \n"
+                    "- If it is used for the first time, \n"
+                    "- please copy it as a template. \n"
+                    "- and do not use the reserved character \"model_demo.yaml\" as the file name."
+                    "\n-------------------------------------------------------------------"
+                )
                 return
             if model_path.endswith("yaml"):
                 model_conf = ModelConfig(self.conf, model_path)
+                inner_name = model_conf.target_model
                 inner_size = model_conf.size_string
                 for k, v in self.name_map.items():
                     if inner_size in v:
                         self.logger.warning(
-                            "There is already a model of the same size. "
-                            "Only one of the smart calls can be called. "
-                            "If you want to refer to one of them, "
-                            "please use the model key to find it.")
+                            "\n-------------------------------------------------------------------\n"
+                            "- There is already a model of the same size. \n"
+                            "- Only one of the smart calls can be called. \n"
+                            "- If you want to refer to one of them, \n"
+                            "- please use the model key or model type to find it."
+                            "\n-------------------------------------------------------------------"
+                        )
                         break
                 inner_key = PathUtils.get_file_name(model_path)
                 inner_value = model_conf.graph_name
                 graph_session = GraphSession(model_conf)
                 interface = Interface(graph_session)
-                self.interface_manager.add(interface)
+                if inner_name == self.conf.default_model:
+                    self.interface_manager.set_default(interface)
+                else:
+                    self.interface_manager.add(interface)
                 self.logger.info("{} a new model: {} ({})".format(
                     "Inited" if is_first else "Added", inner_value, inner_key
                 ))
@@ -72,7 +95,14 @@ class FileEventHandler(FileSystemEventHandler):
         else:
             model_path = str(event.src_path)
             self._add(model_path)
-            self.logger.info("Number of interfaces: {}".format(len(self.interface_manager.group)))
+            self.logger.info(
+                "\n - Number of interfaces: {}"
+                "\n - Current online interface: {}"
+                "\n - The default Interface is: {}".format(
+                    len(self.interface_manager.group),
+                    ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                    self.interface_manager.default_name
+                ))
 
     def on_deleted(self, event):
         if event.is_directory:
@@ -80,7 +110,14 @@ class FileEventHandler(FileSystemEventHandler):
         else:
             model_path = str(event.src_path)
             self.delete(model_path)
-            self.logger.info("Number of interfaces: {}".format(len(self.interface_manager.group)))
+            self.logger.info(
+                "\n - Number of interfaces: {}"
+                "\n - Current online interface: {}"
+                "\n - The default Interface is: {}".format(
+                    len(self.interface_manager.group),
+                    ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                    self.interface_manager.default_name
+                ))
 
 
 if __name__ == "__main__":

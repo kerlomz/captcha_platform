@@ -7,7 +7,7 @@ import base64
 import datetime
 import hashlib
 import time
-from config import ModelConfig
+from config import Config
 from requests import Session, post
 from PIL import Image as PilImage
 from constants import ServerType
@@ -28,10 +28,10 @@ def _image(path):
 class Auth(object):
 
     def __init__(self, host: str, server_type: ServerType):
-        self._model = ModelConfig(print_info=False)
+        self._conf = Config(conf_path="config.yaml")
         self._url = 'http://{}:{}/captcha/auth/v2'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
-        self._access_key = self._model.access_key
-        self._secret_key = self._model.secret_key
+        self._access_key = self._conf.access_key
+        self._secret_key = self._conf.secret_key
         self.true_count = 0
         self.total_count = 0
 
@@ -108,7 +108,7 @@ class GoogleRPC(object):
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        response = stub.predict(grpc_pb2.PredictRequest(captcha_img=image, split_char=',', model_name=""))
+        response = stub.predict(grpc_pb2.PredictRequest(image=image, split_char=',', model_name=""))
         return {"message": response.result, "code": response.code, "success": response.success}
 
     def local_iter(self, image_list: dict):
@@ -124,7 +124,7 @@ class GoogleRPC(object):
 if __name__ == '__main__':
 
     # Here you can replace it with a web request to get images in real time.
-    with open(r"D:\***\***\***.jpg", "rb") as f:
+    with open(r"D:\TrainSet\cy_login\cy_login_test\1vxxd_1534525202121.jpg", "rb") as f:
         img_bytes = f.read()
 
     # # Here is the code for the network request.
@@ -144,14 +144,14 @@ if __name__ == '__main__':
         'image': base64.b64encode(img_bytes).decode(),
     }
     print(api_params)
-    for i in range(1):
+    for i in range(100):
         # Tornado API with authentication
-        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        # print(resp)
+        resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        print(resp)
 
         # Flask API with authentication
-        # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        # print(resp)
+        resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        print(resp)
         #
         # Tornado API without authentication
         # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)

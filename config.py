@@ -10,7 +10,7 @@ from character import *
 
 
 class Config(object):
-    def __init__(self, conf_path: str, graph_path, model_path: str):
+    def __init__(self, conf_path: str, graph_path: str = None, model_path: str = None):
         self.model_path = model_path
         self.conf_path = conf_path
         self.graph_path = graph_path
@@ -24,9 +24,6 @@ class Config(object):
         self.authorization = None
         self.init_logger()
         self.assignment()
-        self.logger.info('ACCESS_KEY: {}, SECRET_KEY: {}, USE_DEFAULT_CONFIG: {}'.format(
-            self.access_key, self.secret_key, self.use_default_authorization
-        ))
 
     def init_logger(self):
         self.logger.setLevel(logging.INFO)

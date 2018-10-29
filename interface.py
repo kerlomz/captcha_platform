@@ -77,6 +77,12 @@ class InterfaceManager(object):
                 return interface
         return self.default if return_default else None
 
+    def get_by_type_size(self, size: str, model_type: str, return_default=True):
+        for interface in self.group:
+            if interface.size_str == size and interface.model_type == model_type:
+                return interface
+        return self.get_by_size(size, return_default=return_default)
+
     def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
             if interface.name == key:
@@ -86,6 +92,13 @@ class InterfaceManager(object):
     @property
     def default(self):
         return self.group[0] if len(self.group) > 0 else None
+
+    @property
+    def default_name(self):
+        _default = self.default
+        if not _default:
+            return
+        return _default.graph_name
 
     def set_default(self, interface: Interface):
         if not interface:

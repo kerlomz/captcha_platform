@@ -23,13 +23,21 @@ class Predict(grpc_pb2_grpc.PredictServicer):
 
     def predict(self, request, context):
         start_time = time.time()
-        bytes_batch, status = ImageUtils.get_bytes_batch(request.captcha_img)
+        bytes_batch, status = ImageUtils.get_bytes_batch(request.image)
         if not bytes_batch:
             grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
-        interface = interface_manager.get_by_size("{}x{}".format(image_size[1], image_size[0]))
+        size_string = "{}x{}".format(image_size[1], image_size[0])
+
+        if request.model_name:
+            interface = interface_manager.get_by_name(request.model_name)
+        elif request.model_name:
+            interface = interface_manager.get_by_type_size(size_string, request.model_type)
+        else:
+            interface = interface_manager.get_by_size(size_string)
+
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
