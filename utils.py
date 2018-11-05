@@ -71,7 +71,9 @@ class ImageUtils(object):
             image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
             image = preprocessing(image, model.binaryzation, model.smooth, model.blur)
             image = image.astype(np.float32) / 255.
-            return cv2.resize(image, (model.image_width, model.image_height))
+            image = cv2.resize(image, (model.image_width, model.image_height))
+            image = image.swapaxes(0, 1)
+            return np.array(image[:, :, np.newaxis])
 
         try:
             image_batch = [load_image(i) for i in bytes_batch]

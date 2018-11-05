@@ -143,7 +143,7 @@ class ModelConfig(Model):
 
         self.char_exclude = self.cf_model['Model'].get('CharExclude')
 
-        self.gen_charset = [i for i in self.char_set(self.charset) if i not in self.char_exclude]
+        self.gen_charset = [''] + [i for i in self.char_set(self.charset) if i not in self.char_exclude]
         self.charset_len = len(self.gen_charset)
 
         self.target_model = self.cf_model['Model'].get('ModelName')

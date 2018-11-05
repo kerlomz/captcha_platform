@@ -29,11 +29,11 @@ class Predict(grpc_pb2_grpc.PredictServicer):
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
-        size_string = "{}x{}".format(image_size[1], image_size[0])
+        size_string = "{}x{}".format(image_size[0], image_size[1])
 
         if request.model_name:
             interface = interface_manager.get_by_name(request.model_name)
-        elif request.model_name:
+        elif request.model_type:
             interface = interface_manager.get_by_type_size(size_string, request.model_type)
         else:
             interface = interface_manager.get_by_size(size_string)

@@ -78,7 +78,7 @@ class AuthHandler(BaseHandler):
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
-        size_string = "{}x{}".format(image_size[1], image_size[0])
+        size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_type' in data:
             interface = interface_manager.get_by_type_size(size_string, data['model_type'])
         elif 'model_name' in data:
