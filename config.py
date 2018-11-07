@@ -28,12 +28,9 @@ class Config(object):
     def init_logger(self):
         self.logger.setLevel(logging.INFO)
         file_handler = logging.FileHandler('{}.log'.format("captcha_platform"))
-        stream_handler = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
-        stream_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
-        self.logger.addHandler(stream_handler)
 
     def assignment(self):
         # ---AUTHORIZATION START---
@@ -109,6 +106,7 @@ class ModelConfig(Model):
         super().__init__(conf=conf, model_conf=model_conf)
         self.system = None
         self.device = None
+        self.device_usage = None
         self.charset = None
         self.split_char = None
         self.gen_charset = None
@@ -133,6 +131,8 @@ class ModelConfig(Model):
         system = self.cf_model.get('System')
         self.device = system.get('Device') if system else None
         self.device = self.device if self.device else "cpu:0"
+        self.device_usage = system.get('DeviceUsage') if system else None
+        self.device_usage = self.device_usage if self.device_usage else 0.1
 
         self.charset = self.cf_model['Model'].get('CharSet')
         self.gen_charset = self.char_set(self.charset)

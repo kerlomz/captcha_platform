@@ -69,11 +69,10 @@ class ImageUtils(object):
             data_stream = io.BytesIO(image_bytes)
             pil_image = PIL_Image.open(data_stream).convert('RGB')
             image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-            image = preprocessing(image, model.binaryzation, model.smooth, model.blur)
-            image = image.astype(np.float32) / 255.
+            image = preprocessing(image, model.binaryzation, model.smooth, model.blur).astype(np.float32)
             image = cv2.resize(image, (model.image_width, model.image_height))
             image = image.swapaxes(0, 1)
-            return np.array(image[:, :, np.newaxis])
+            return image[:, :, np.newaxis]
 
         try:
             image_batch = [load_image(i) for i in bytes_batch]

@@ -77,8 +77,8 @@ class Auth(object):
 
 
 class NoAuth(object):
-    def __init__(self, host: str, server_type: ServerType):
-        self._url = 'http://{}:{}/captcha/v1'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
+    def __init__(self, host: str, server_type: ServerType, port=None):
+        self._url = 'http://{}:{}/captcha/v1'.format(host, port if port else "19951" if server_type == ServerType.FLASK else "19952")
         self.true_count = 0
         self.total_count = 0
 
@@ -102,29 +102,44 @@ class GoogleRPC(object):
         self.true_count = 0
         self.total_count = 0
 
-    def request(self, image):
+    def request(self, image, println=False, value=None):
+
         import grpc
         import grpc_pb2
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        response = stub.predict(grpc_pb2.PredictRequest(image=image, split_char=',', model_name=""))
+        response = stub.predict(grpc_pb2.PredictRequest(image=image, split_char=','))
+        if println and value:
+            _true = str(response.result).lower() == str(value).lower()
+            if _true:
+                self.true_count += 1
+            print("result: {}, label: {}, flag: {}".format(response.result, value, _true))
         return {"message": response.result, "code": response.code, "success": response.success}
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():
-            code = self.request(v.get('image')).get('message').get('result')
+            code = self.request(v.get('image')).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1
             self.total_count += 1
             print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
 
+    def press_testing(self, image_list: dict):
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool(500)
+        for k, v in image_list.items():
+            pool.apply_async(self.request(v.get('image'), True, k))
+        pool.close()
+        pool.join()
+        print(self.true_count/len(image_list))
+
 
 if __name__ == '__main__':
 
     # Here you can replace it with a web request to get images in real time.
-    with open(r"D:\TrainSet\cy_login\cy_login_test\1vxxd_1534525202121.jpg", "rb") as f:
+    with open(r"D:\TrainSet\cy_trans\cy_trans_test\1jzw_1534356989927.jpg", "rb") as f:
         img_bytes = f.read()
 
     # # Here is the code for the network request.
@@ -142,16 +157,17 @@ if __name__ == '__main__':
     # pil_image.show()
     api_params = {
         'image': base64.b64encode(img_bytes).decode(),
+        'model_type': 'number1'
     }
     print(api_params)
-    for i in range(100):
+    for i in range(1):
         # Tornado API with authentication
-        resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        print(resp)
+        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp)
 
         # Flask API with authentication
-        resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        print(resp)
+        # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp)
         #
         # Tornado API without authentication
         # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
@@ -170,9 +186,10 @@ if __name__ == '__main__':
         pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    # path = r"D:\***\***\***"
-    # path_list = os.listdir(path)
-    # print(path_list)
-    # batch = {i.split('_')[0].lower(): _image(os.path.join(path, i)) for i in path_list}
-    # print(batch)
+    path = r"D:\TrainSet\cy\cy_test"
+    path_list = os.listdir(path)
+    print(path_list)
+    batch = {i.split('_')[0].lower(): _image(os.path.join(path, i)) for i in path_list}
+    print(batch)
     # GoogleRPC(DEFAULT_HOST).local_iter(batch)
+    GoogleRPC(DEFAULT_HOST).press_testing(batch)

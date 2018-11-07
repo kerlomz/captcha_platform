@@ -9,7 +9,6 @@ import optparse
 import threading
 import tornado.ioloop
 from tornado.web import RequestHandler
-from logging import basicConfig, INFO
 from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode

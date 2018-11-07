@@ -12,10 +12,8 @@ def decode_maps(charset):
 def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig, split_char=None):
     if split_char is None:
         split_char = model.split_char
-    image_batch = [np.reshape(image, [model.image_width, model.image_height, 1]) for image in image_batch]
-    inputs_batch = np.asarray(image_batch)
     dense_decoded_code = _sess.run(dense_decoded, feed_dict={
-        op_input: inputs_batch,
+        op_input: image_batch,
     })
     decoded_expression = []
     for item in dense_decoded_code:

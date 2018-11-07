@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import os
-import tensorflow as tf
 
 from graph_session import GraphSession
 from predict import predict_func
@@ -21,16 +20,6 @@ class Interface(object):
         self.sess = self.graph_sess.session
         self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
         self.x = self.sess.graph.get_tensor_by_name('input:0')
-        # self.seq_len = self.sess.graph.get_tensor_by_name("seq_len:0")
-        # self.seq_len = self.sess.graph.get_tensor_by_name('lstm/seq_len:0')
-        # self.batch_size = self.sess.graph.get_tensor_by_name('batch_size:0')
-        # decoded, log_prob = tf.nn.ctc_beam_search_decoder(
-        #     self.predict,
-        #     self.seq_len,
-        #     merge_repeated=False,
-        # )
-        # self.dense_decoded = tf.sparse_tensor_to_dense(decoded[0], default_value=-1)
-        # self.dense_decoded = tf.sparse_tensor_to_dense(decoded[0], default_value=-1)
         self.sess.graph.finalize()
 
     @property
@@ -78,7 +67,6 @@ class InterfaceManager(object):
 
     def get_by_size(self, size: str, return_default=True):
         for interface in self.group:
-            print(interface.size_str, size)
             if interface.size_str == size:
                 return interface
         for interface in self.group:
