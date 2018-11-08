@@ -72,7 +72,7 @@ class ImageUtils(object):
             image = preprocessing(image, model.binaryzation, model.smooth, model.blur).astype(np.float32)
             image = cv2.resize(image, (model.image_width, model.image_height))
             image = image.swapaxes(0, 1)
-            return image[:, :, np.newaxis]
+            return image[:, :, np.newaxis] / 255.
 
         try:
             image_batch = [load_image(i) for i in bytes_batch]
