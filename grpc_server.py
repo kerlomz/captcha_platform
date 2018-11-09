@@ -44,7 +44,7 @@ class Predict(grpc_pb2_grpc.PredictServicer):
             return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
 
         result = interface.predict_batch(image_batch, request.split_char)
-        logger.info('Predict Result[{}] - {} ms'.format(result, (time.time() - start_time) * 1000))
+        logger.info('[{}] - Predict Result[{}] - {} ms'.format(interface.name, result, (time.time() - start_time) * 1000))
         return grpc_pb2.PredictResult(result=result, success=status['success'], code=status['code'])
 
 
