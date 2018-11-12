@@ -68,7 +68,7 @@ class Auth(object):
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():
-            code = self.request(v).get('message').get('result')
+            code = self.request(v).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1
@@ -87,7 +87,7 @@ class NoAuth(object):
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():
-            code = self.request(v).get('message').get('result')
+            code = self.request(v).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1
@@ -102,14 +102,14 @@ class GoogleRPC(object):
         self.true_count = 0
         self.total_count = 0
 
-    def request(self, image, println=False, value=None):
+    def request(self, image, println=False, value=None, model_type=None):
 
         import grpc
         import grpc_pb2
         import grpc_pb2_grpc
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
-        response = stub.predict(grpc_pb2.PredictRequest(image=image, split_char=','))
+        response = stub.predict(grpc_pb2.PredictRequest(image=image, split_char=',', model_type=model_type))
         if println and value:
             _true = str(response.result).lower() == str(value).lower()
             if _true:
@@ -117,9 +117,9 @@ class GoogleRPC(object):
             print("result: {}, label: {}, flag: {}".format(response.result, value, _true))
         return {"message": response.result, "code": response.code, "success": response.success}
 
-    def local_iter(self, image_list: dict):
+    def local_iter(self, image_list: dict, model_type=None):
         for k, v in image_list.items():
-            code = self.request(v.get('image')).get('message')
+            code = self.request(v.get('image'), model_type=model_type).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1

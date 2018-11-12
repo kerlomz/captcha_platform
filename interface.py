@@ -75,11 +75,15 @@ class InterfaceManager(object):
         return self.default if return_default else None
 
     def get_by_type_size(self, size: str, model_type: str, return_default=True):
+        _interface = None
         for interface in self.group:
             if interface.size_str == size and interface.model_type == model_type:
                 return interface
         for interface in self.group:
             if self.size_fuzzy_matching(interface.size_str, size) and interface.model_type == model_type:
+                return interface
+        for interface in self.group:
+            if interface.model_type == model_type:
                 return interface
         return self.get_by_type(size, return_default=return_default)
 
