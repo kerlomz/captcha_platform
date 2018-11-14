@@ -116,6 +116,7 @@ class ModelConfig(Model):
         self.model_type = None
         self.image_height = None
         self.image_width = None
+        self.resize = None
         self.binaryzation = None
         self.smooth = None
         self.blur = None
@@ -151,12 +152,14 @@ class ModelConfig(Model):
         self.split_char = self.cf_model['Model'].get('SplitChar')
         self.split_char = '' if not self.split_char else self.split_char
 
+        self.image_height = self.cf_model['Model'].get('ImageHeight')
+        self.image_width = self.cf_model['Model'].get('ImageWidth')
+
         self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
         self.blur = self.cf_model['Pretreatment'].get('Blur')
-
-        self.image_height = self.cf_model['Model'].get('ImageHeight')
-        self.image_width = self.cf_model['Model'].get('ImageWidth')
+        self.resize = self.cf_model['Pretreatment'].get('Resize')
+        self.resize = self.resize if self.resize else [self.image_width, self.image_height]
 
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
         if not os.path.exists(self.compile_model_path):

@@ -7,10 +7,18 @@ ALPHA_UPPER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
                'V', 'W', 'X', 'Y', 'Z']
 ALPHA_LOWER = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
                'v', 'w', 'x', 'y', 'z']
+ARITHMETIC = ['(', ')', '+', '-', '×', '÷', '=']
+FLOAT = ['.']
 
 SIMPLE_CHAR_SET = dict(
     NUMERIC=NUMBER,
     ALPHANUMERIC=NUMBER + ALPHA_LOWER + ALPHA_UPPER,
     ALPHANUMERIC_LOWER=NUMBER + ALPHA_LOWER,
-    ALPHANUMERIC_UPPER=NUMBER + ALPHA_UPPER
+    ALPHANUMERIC_UPPER=NUMBER + ALPHA_UPPER,
+    ALPHABET_LOWER=ALPHA_LOWER,
+    ALPHABET_UPPER=ALPHA_UPPER,
+    ALPHABET=ALPHA_LOWER + ALPHA_UPPER,
+    ARITHMETIC=NUMBER + ARITHMETIC,
+    ALPHANUMERIC_LOWER_MIX_ARITHMETIC=NUMBER + ALPHA_LOWER + ARITHMETIC,
+    FLOAT=NUMBER + FLOAT,
 )

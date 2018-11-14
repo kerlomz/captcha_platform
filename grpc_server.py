@@ -37,6 +37,9 @@ class Predict(grpc_pb2_grpc.PredictServicer):
             interface = interface_manager.get_by_type_size(size_string, request.model_type)
         else:
             interface = interface_manager.get_by_size(size_string)
+        if not interface:
+            logger.info('Service is not ready!')
+            return {"result": "", "success": False, "code": 999}
 
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
