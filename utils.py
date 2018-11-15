@@ -15,6 +15,15 @@ from pretreatment import preprocessing
 from config import ModelConfig
 
 
+class ParamUtils(object):
+
+    @staticmethod
+    def filter(param):
+        if isinstance(param, list) and len(param) > 0 and isinstance(param[0], bytes):
+            return param[0].decode()
+        return param
+
+
 class SignUtils(object):
 
     @staticmethod
@@ -48,7 +57,9 @@ class ImageUtils(object):
         response = Response()
         try:
             if isinstance(base64_img, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img]
+                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img if isinstance(i, str)]
+                if not bytes_batch:
+                    bytes_batch = [base64.b64decode(i) for i in base64_img if isinstance(i, bytes)]
             else:
                 bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(Config.split_flag)
         except binascii.Error:
