@@ -14,6 +14,8 @@ class GraphSession(object):
         self.model_name = self.model_conf.target_model
         self.graph_name = self.model_conf.graph_name
         self.model_type = self.model_conf.model_type
+        self.model_site = self.model_conf.model_site
+        self.version = self.model_conf.version
         self.graph = tf.Graph()
         self.sess = tf.Session(
             graph=self.graph,

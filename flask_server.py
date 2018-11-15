@@ -91,12 +91,17 @@ def auth_request():
     This api is used for captcha prediction with authentication
     :return:
     """
+    start_time = time.time()
     if not request.json or 'image' not in request.json:
         abort(400)
 
     bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:
+        logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+            request.json['model_type'], request.json['model_site'], response,
+            (time.time() - start_time) * 1000)
+        )
         return json.dumps(response), 200
 
     image_sample = bytes_batch[0]
@@ -115,9 +120,21 @@ def auth_request():
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
     if not image_batch:
+        logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+            interface.name, size_string, request.json['model_type'], request.json['model_site'], response,
+            (time.time() - start_time) * 1000)
+        )
         return json.dumps(response), 200
 
     result = interface.predict_batch(image_batch, split_char)
+    logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+        interface.name,
+        size_string,
+        request.json['model_type'],
+        request.json['model_site'],
+        result,
+        (time.time() - start_time) * 1000
+    ))
     response['message'] = result
     return json.dumps(response), 200
 
@@ -128,19 +145,26 @@ def common_request():
     This api is used for captcha prediction without authentication
     :return:
     """
+    start_time = time.time()
     if not request.json or 'image' not in request.json:
         abort(400)
 
     bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:
+        logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+            request.json['model_type'], request.json['model_site'], response,
+            (time.time() - start_time) * 1000)
+        )
         return json.dumps(response), 200
 
     image_sample = bytes_batch[0]
     image_size = ImageUtils.size_of_image(image_sample)
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
-    if 'model_type' in request.json:
+    if 'model_site' in request.json:
+        interface = interface_manager.get_by_sites(request.json['model_site'])
+    elif 'model_type' in request.json:
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
         interface = interface_manager.get_by_name(size_string, request.json['model_name'])
@@ -152,9 +176,21 @@ def common_request():
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
     if not image_batch:
+        logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+            interface.name, size_string, request.json['model_type'], request.json['model_site'], response,
+            (time.time() - start_time) * 1000)
+        )
         return json.dumps(response), 200
 
     result = interface.predict_batch(image_batch, split_char)
+    logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+        interface.name,
+        size_string,
+        request.json['model_type'],
+        request.json['model_site'],
+        result,
+        (time.time() - start_time) * 1000
+    ))
     response['message'] = result
     return json.dumps(response), 200
 

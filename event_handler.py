@@ -51,18 +51,21 @@ class FileEventHandler(FileSystemEventHandler):
                 model_conf = ModelConfig(self.conf, model_path)
                 inner_name = model_conf.target_model
                 inner_size = model_conf.size_string
+                inner_key = PathUtils.get_file_name(model_path)
                 for k, v in self.name_map.items():
                     if inner_size in v:
                         self.logger.warning(
                             "\n-------------------------------------------------------------------\n"
-                            "- There is already a model of the same size. \n"
+                            "- The current model {} is the same size [{}] as the loaded model {}. \n"
                             "- Only one of the smart calls can be called. \n"
                             "- If you want to refer to one of them, \n"
                             "- please use the model key or model type to find it."
-                            "\n-------------------------------------------------------------------"
+                            "\n-------------------------------------------------------------------".format(
+                                inner_key, inner_size, k
+                            )
                         )
                         break
-                inner_key = PathUtils.get_file_name(model_path)
+
                 inner_value = model_conf.graph_name
                 graph_session = GraphSession(model_conf)
                 interface = Interface(graph_session)

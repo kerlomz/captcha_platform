@@ -17,6 +17,8 @@ class Interface(object):
         self.size_str = self.model_conf.size_string
         self.graph_name = self.graph_sess.graph_name
         self.model_type = self.graph_sess.model_type
+        self.model_site = self.graph_sess.model_site
+        self.version = self.graph_sess.version
         self.sess = self.graph_sess.session
         self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
         self.x = self.sess.graph.get_tensor_by_name('input:0')
@@ -65,47 +67,51 @@ class InterfaceManager(object):
         interface = self.get_by_name(graph_name, False)
         self.remove(interface)
 
+    def get_by_sites(self, model_site, return_default=True):
+        match_ids = [i for i in range(len(self.group)) if model_site in self.group[i].model_site]
+        max_id = match_ids[0] if match_ids else 0
+        for i in match_ids:
+            interface = self.group[i]
+            if interface.version > self.group[i].version:
+                max_id = i
+        return self.group[max_id] if match_ids else self.default if return_default else None
+
     def get_by_size(self, size: str, return_default=True):
-        for interface in self.group:
-            if interface.size_str == size:
-                return interface
-        for interface in self.group:
-            if self.size_fuzzy_matching(interface.size_str, size):
-                return interface
-        return self.default if return_default else None
+
+        match_ids = [i for i in range(len(self.group)) if self.group[i].size_str == size]
+        max_id = match_ids[0] if match_ids else 0
+        for i in match_ids:
+            interface = self.group[i]
+            if interface.version > self.group[i].version:
+                max_id = i
+        return self.group[max_id] if match_ids else self.default if return_default else None
 
     def get_by_type_size(self, size: str, model_type: str, return_default=True):
-        _interface = None
-        for interface in self.group:
-            if interface.size_str == size and interface.model_type == model_type:
-                return interface
-        for interface in self.group:
-            if self.size_fuzzy_matching(interface.size_str, size) and interface.model_type == model_type:
-                return interface
-        for interface in self.group:
-            if interface.model_type == model_type:
-                return interface
-        return self.get_by_type(size, return_default=return_default)
+        match_ids = [
+            i for i in range(len(self.group))
+            if self.group[i].size_str == size and self.group[i].model_type == model_type
+        ]
+        max_id = match_ids[0] if match_ids else 0
+        for i in match_ids:
+            interface = self.group[i]
+            if interface.version > self.group[i].version:
+                max_id = i
+        return self.group[max_id] if match_ids else self.get_by_type(model_type, return_default)
 
     def get_by_type(self, model_type: str, return_default=True):
-        for interface in self.group:
-            if interface.model_type == model_type:
-                return interface
-        return self.default if return_default else None
+        match_ids = [i for i in range(len(self.group)) if self.group[i].model_type == model_type]
+        max_id = match_ids[0] if match_ids else 0
+        for i in match_ids:
+            interface = self.group[i]
+            if interface.version > self.group[i].version:
+                max_id = i
+        return self.group[max_id] if match_ids else self.default if return_default else None
 
     def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
             if interface.name == key:
                 return interface
         return self.default if return_default else None
-
-    @staticmethod
-    def size_fuzzy_matching(source_size: str, target_size: str):
-        _source_size = [int(int(_) / 10 + 0.5) * 10 for _ in source_size.split('x')]
-        _target_size = [int(int(_) / 10 + 0.5) * 10 for _ in target_size.split('x')]
-        if _source_size == _target_size:
-            return True
-        return False
 
     @property
     def default(self):

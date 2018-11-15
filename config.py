@@ -6,6 +6,7 @@ import uuid
 import yaml
 import hashlib
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from character import *
 
 
@@ -14,12 +15,15 @@ class Config(object):
         self.model_path = model_path
         self.conf_path = conf_path
         self.graph_path = graph_path
-        self.logger = logging.getLogger("")
         self.sys_cf = self.read_conf
         self.access_key = None
         self.secret_key = None
         self.default_model = self.sys_cf['System']['DefaultModel']
         self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
+        self.log_path = "logs"
+        self.logger_tag = self.sys_cf['System'].get('LoggerTag')
+        self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
+        self.logger = logging.getLogger(self.logger_tag)
         self.use_default_authorization = False
         self.authorization = None
         self.init_logger()
@@ -27,7 +31,14 @@ class Config(object):
 
     def init_logger(self):
         self.logger.setLevel(logging.INFO)
-        file_handler = logging.FileHandler('{}.log'.format("captcha_platform"))
+        if not os.path.exists(self.log_path):
+            os.makedirs(self.log_path)
+        file_handler = TimedRotatingFileHandler(
+            '{}/{}.log'.format(self.log_path, "captcha_platform"),
+            when="MIDNIGHT",
+            interval=1,
+            backupCount=180
+        )
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
@@ -120,6 +131,8 @@ class ModelConfig(Model):
         self.binaryzation = None
         self.smooth = None
         self.blur = None
+        self.model_site = None
+        self.version = None
         self.mac_address = None
         self.compile_model_path = None
         self.model_name_md5 = None
@@ -149,6 +162,10 @@ class ModelConfig(Model):
 
         self.target_model = self.cf_model['Model'].get('ModelName')
         self.model_type = self.cf_model['Model'].get('ModelType')
+        self.model_site = self.cf_model['Model'].get('Sites')
+        self.model_site = self.model_site if self.model_site else []
+        self.version = self.cf_model['Model'].get('Version')
+        self.version = self.version if self.version else 1.0
         self.split_char = self.cf_model['Model'].get('SplitChar')
         self.split_char = '' if not self.split_char else self.split_char
 

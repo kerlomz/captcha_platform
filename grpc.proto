@@ -9,6 +9,7 @@ message PredictRequest {
     string split_char = 2;
     string model_name = 3;
     string model_type = 4;
+    string model_site = 5;
 }
 
 message PredictResult {
