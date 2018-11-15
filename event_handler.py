@@ -26,10 +26,10 @@ class FileEventHandler(FileSystemEventHandler):
             self._add(model, is_first=True)
         self.logger.info(
             "\n - Number of interfaces: {}"
-            "\n - Current online interface: {}"
+            "\n - Current online interface: \n\t - {}"
             "\n - The default Interface is: {}".format(
                 len(self.interface_manager.group),
-                ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                "\n\t - ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
                 self.interface_manager.default_name
             ))
 
@@ -100,10 +100,10 @@ class FileEventHandler(FileSystemEventHandler):
             self._add(model_path)
             self.logger.info(
                 "\n - Number of interfaces: {}"
-                "\n - Current online interface: {}"
+                "\n - Current online interface: \n\t - {}"
                 "\n - The default Interface is: {}".format(
                     len(self.interface_manager.group),
-                    ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                    "\n\t - ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
                     self.interface_manager.default_name
                 ))
 
@@ -115,10 +115,10 @@ class FileEventHandler(FileSystemEventHandler):
             self.delete(model_path)
             self.logger.info(
                 "\n - Number of interfaces: {}"
-                "\n - Current online interface: {}"
+                "\n - Current online interface: \n\t - {}"
                 "\n - The default Interface is: {}".format(
                     len(self.interface_manager.group),
-                    ", ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                    "\n\t - ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
                     self.interface_manager.default_name
                 ))
 
