@@ -130,8 +130,8 @@ def auth_request():
     logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
         interface.name,
         size_string,
-        request.json['model_type'],
-        request.json['model_site'],
+        request.json.get('model_type'),
+        request.json.get('model_site'),
         result,
         (time.time() - start_time) * 1000
     ))
@@ -186,8 +186,8 @@ def common_request():
     logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
         interface.name,
         size_string,
-        request.json['model_type'],
-        request.json['model_site'],
+        request.json.get('model_type'),
+        request.json.get('model_site'),
         result,
         (time.time() - start_time) * 1000
     ))
