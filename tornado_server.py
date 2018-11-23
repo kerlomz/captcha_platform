@@ -84,7 +84,7 @@ class AuthHandler(BaseHandler):
                 model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            self.write(json_encode(response))
+            self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
@@ -105,7 +105,7 @@ class AuthHandler(BaseHandler):
                 model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            return self.write(json_encode(response))
+            return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
         logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
@@ -142,7 +142,7 @@ class NoAuthHandler(BaseHandler):
                 model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            self.write(json_encode(response))
+            self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
@@ -165,7 +165,7 @@ class NoAuthHandler(BaseHandler):
                 interface.name, size_string, model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            return self.write(json_encode(response))
+            return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
         logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
