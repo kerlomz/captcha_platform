@@ -77,6 +77,18 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
         - Model-1.pb
         - ...
 
+# Management Model
+1. **Load a model**
+ - Put the trained pb model in the graph folder.
+ - Put the trained yaml model configuration file in the model folder.
+2. **Unload a model**
+ - Delete the corresponding yaml configuration file in the model folder.
+ - Delete the corresponding pb model file in the graph folder.
+3. **Update a model**
+ - Put the trained pb model in the graph folder.
+ - Put the yaml configuration file with "Version" greater than the current version in the model folder.
+ - Delete old models and configurations.
+ 
 # License
 This project use SATA License (Star And Thank Author License), so you have to star this project before using. Read the license carefully.
 

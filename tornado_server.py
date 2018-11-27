@@ -8,13 +8,14 @@ import grpc_pb2_grpc
 import optparse
 import threading
 import tornado.ioloop
+import tornado.log
 from tornado.web import RequestHandler
 from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager
 from config import Config
-from utils import ImageUtils
+from utils import ImageUtils, ParamUtils
 from signature import Signature, ServerType
 from watchdog.observers import Observer
 from event_handler import FileEventHandler
@@ -67,32 +68,50 @@ class AuthHandler(BaseHandler):
 
     @sign.signature_required
     def post(self):
+        start_time = time.time()
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
+        model_type = ParamUtils.filter(data.get('model_type'))
+        model_site = ParamUtils.filter(data.get('model_site'))
+        model_name = ParamUtils.filter(data.get('model_name'))
+        split_char = ParamUtils.filter(data.get('split_char'))
+
         if not bytes_batch:
-            self.write(json_encode(response))
+            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                model_type, model_site, response,
+                (time.time() - start_time) * 1000)
+            )
+            self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_type' in data:
-            interface = interface_manager.get_by_type_size(size_string, data['model_type'])
+            interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:
-            interface = interface_manager.get_by_name(data['model_name'])
+            interface = interface_manager.get_by_name(model_name)
         else:
             interface = interface_manager.get_by_size(size_string)
 
-        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+        split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
-            return self.write(json_encode(response))
+            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                model_type, model_site, response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
+        logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+            interface.name, size_string, model_type, model_site, result,
+            (time.time() - start_time) * 1000)
+        )
         response['message'] = result
         return self.write(json_encode(response))
 
@@ -100,7 +119,7 @@ class AuthHandler(BaseHandler):
 class NoAuthHandler(BaseHandler):
 
     def post(self):
-
+        start_time = time.time()
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
@@ -111,30 +130,47 @@ class NoAuthHandler(BaseHandler):
         #     data['model_name'] if 'model_name' in data else '',
         #     data['model_type'] if 'model_type' in data else ''
         # )
+        model_type = ParamUtils.filter(data.get('model_type'))
+        model_site = ParamUtils.filter(data.get('model_site'))
+        model_name = ParamUtils.filter(data.get('model_name'))
+        split_char = ParamUtils.filter(data.get('split_char'))
 
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
-            self.write(json_encode(response))
+            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                model_type, model_site, response,
+                (time.time() - start_time) * 1000)
+            )
+            self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
-        if 'model_type' in data:
-            interface = interface_manager.get_by_type_size(size_string, data['model_type'])
+        if 'model_site' in data:
+            interface = interface_manager.get_by_sites(model_site)
+        elif 'model_type' in data:
+            interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:
-            interface = interface_manager.get_by_name(data['model_name'])
+            interface = interface_manager.get_by_name(model_name)
         else:
             interface = interface_manager.get_by_size(size_string)
 
-        split_char = data['split_char'] if 'split_char' in data else interface.model_conf.split_char
+        split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
-            return self.write(json_encode(response))
+            logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                interface.name, size_string, model_type, model_site, response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
+        logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+            interface.name, size_string, model_type, model_site, result, (time.time() - start_time) * 1000)
+        )
         response['message'] = result
         return self.write(json_encode(response))
 
@@ -175,6 +211,7 @@ if __name__ == "__main__":
 
     system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
     logger = system_config.logger
+    tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
     threading.Thread(target=event_loop).start()
 

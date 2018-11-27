@@ -15,6 +15,15 @@ from pretreatment import preprocessing
 from config import ModelConfig
 
 
+class ParamUtils(object):
+
+    @staticmethod
+    def filter(param):
+        if isinstance(param, list) and len(param) > 0 and isinstance(param[0], bytes):
+            return param[0].decode()
+        return param
+
+
 class SignUtils(object):
 
     @staticmethod
@@ -48,7 +57,9 @@ class ImageUtils(object):
         response = Response()
         try:
             if isinstance(base64_img, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img]
+                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img if isinstance(i, str)]
+                if not bytes_batch:
+                    bytes_batch = [base64.b64decode(i) for i in base64_img if isinstance(i, bytes)]
             else:
                 bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(Config.split_flag)
         except binascii.Error:
@@ -70,7 +81,7 @@ class ImageUtils(object):
             pil_image = PIL_Image.open(data_stream).convert('RGB')
             image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
             image = preprocessing(image, model.binaryzation, model.smooth, model.blur).astype(np.float32)
-            image = cv2.resize(image, (model.image_width, model.image_height))
+            image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
             return image[:, :, np.newaxis] / 255.
 

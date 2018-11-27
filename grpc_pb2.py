@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\ngrpc.proto\"[\n\x0ePredictRequest\x12\r\n\x05image\x18\x01 \x01(\t\x12\x12\n\nsplit_char\x18\x02 \x01(\t\x12\x12\n\nmodel_name\x18\x03 \x01(\t\x12\x12\n\nmodel_type\x18\x04 \x01(\t\">\n\rPredictResult\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04\x63ode\x18\x02 \x01(\x05\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x37\n\x07Predict\x12,\n\x07predict\x12\x0f.PredictRequest\x1a\x0e.PredictResult\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\ngrpc.proto\"o\n\x0ePredictRequest\x12\r\n\x05image\x18\x01 \x01(\t\x12\x12\n\nsplit_char\x18\x02 \x01(\t\x12\x12\n\nmodel_name\x18\x03 \x01(\t\x12\x12\n\nmodel_type\x18\x04 \x01(\t\x12\x12\n\nmodel_site\x18\x05 \x01(\t\">\n\rPredictResult\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04\x63ode\x18\x02 \x01(\x05\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x37\n\x07Predict\x12,\n\x07predict\x12\x0f.PredictRequest\x1a\x0e.PredictResult\"\x00\x62\x06proto3')
 )
 
 
@@ -60,6 +60,13 @@ _PREDICTREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='model_site', full_name='PredictRequest.model_site', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -73,7 +80,7 @@ _PREDICTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=14,
-  serialized_end=105,
+  serialized_end=125,
 )
 
 
@@ -117,8 +124,8 @@ _PREDICTRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=107,
-  serialized_end=169,
+  serialized_start=127,
+  serialized_end=189,
 )
 
 DESCRIPTOR.message_types_by_name['PredictRequest'] = _PREDICTREQUEST
@@ -147,8 +154,8 @@ _PREDICT = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=171,
-  serialized_end=226,
+  serialized_start=191,
+  serialized_end=246,
   methods=[
   _descriptor.MethodDescriptor(
     name='predict',

@@ -30,21 +30,31 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
-
-        if request.model_name:
+        if request.model_site:
+            interface = interface_manager.get_by_sites(request.model_site)
+        elif request.model_name:
             interface = interface_manager.get_by_name(request.model_name)
         elif request.model_type:
             interface = interface_manager.get_by_type_size(size_string, request.model_type)
         else:
             interface = interface_manager.get_by_size(size_string)
-
+        if not interface:
+            logger.info('Service is not ready!')
+            return {"result": "", "success": False, "code": 999}
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
 
         result = interface.predict_batch(image_batch, request.split_char)
-        logger.info('[{}] - Predict Result[{}] - {} ms'.format(interface.name, result, (time.time() - start_time) * 1000))
+        logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+            interface.name,
+            size_string,
+            request.model_type,
+            request.model_site,
+            result,
+            (time.time() - start_time) * 1000
+        ))
         return grpc_pb2.PredictResult(result=result, success=status['success'], code=status['code'])
 
 
