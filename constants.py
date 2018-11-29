@@ -8,8 +8,9 @@ class Config:
 
 
 class ServerType(str):
-    FLASK = 'FLASK'
-    TORNADO = 'TORNADO'
+    FLASK = 19951
+    TORNADO = 19952
+    SANIC = 19953
 
 
 class Response:

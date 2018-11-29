@@ -118,6 +118,7 @@ class AuthHandler(BaseHandler):
 
 class NoAuthHandler(BaseHandler):
 
+    @tornado.gen.coroutine
     def post(self):
         start_time = time.time()
         data = self.parse_param()
@@ -142,13 +143,13 @@ class NoAuthHandler(BaseHandler):
                 model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            self.finish(json_encode(response))
+            return self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_site' in data:
-            interface = interface_manager.get_by_sites(model_site)
+            interface = interface_manager.get_by_sites(model_site, size_string)
         elif 'model_type' in data:
             interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:

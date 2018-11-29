@@ -8,7 +8,7 @@ import datetime
 import hashlib
 import time
 from config import Config
-from requests import Session, post
+from requests import Session, post, get
 from PIL import Image as PilImage
 from constants import ServerType
 
@@ -29,9 +29,9 @@ def _image(_path, model_type=None, model_site=None):
 
 class Auth(object):
 
-    def __init__(self, host: str, server_type: ServerType):
+    def __init__(self, host: str, server_type: ServerType, port=None):
         self._conf = Config(conf_path="config.yaml")
-        self._url = 'http://{}:{}/captcha/auth/v2'.format(host, "19951" if server_type == ServerType.FLASK else "19952")
+        self._url = 'http://{}:{}/captcha/auth/v2'.format(host, port if port else server_type)
         self._access_key = self._conf.access_key
         self._secret_key = self._conf.secret_key
         self.true_count = 0
@@ -80,14 +80,14 @@ class Auth(object):
 
 class NoAuth(object):
     def __init__(self, host: str, server_type: ServerType, port=None):
-        self._url = 'http://{}:{}/captcha/v1'.format(host, port if port else "19951" if server_type == ServerType.FLASK else "19952")
+        self._url = 'http://{}:{}/captcha/v1'.format(host, port if port else server_type)
         self.true_count = 0
         self.total_count = 0
 
     def request(self, params):
         return post(self._url, json=params).json()
 
-    def local_iter(self, image_list: dict, model_type=None, model_site=None):
+    def local_iter(self, image_list: dict):
         for k, v in image_list.items():
             code = self.request(v).get('message')
             _true = str(code).lower() == str(k).lower()
@@ -97,6 +97,15 @@ class NoAuth(object):
             print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
                 code, k, _true, self.true_count/self.total_count
             ))
+
+    def press_testing(self, image_list: dict, model_type=None, model_site=None):
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool(500)
+        for k, v in image_list.items():
+            pool.apply_async(self.request({"image": v.get('image'), "model_type": model_type, "model_site": model_site}))
+        pool.close()
+        pool.join()
+        print(self.true_count/len(image_list))
 
 
 class GoogleRPC(object):
@@ -134,6 +143,22 @@ class GoogleRPC(object):
                 code, k, _true, self.true_count/self.total_count
             ))
 
+    def remote_iter(self, url: str, save_path: str=None, num=100, model_type=None, model_site=None):
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        sess = Session()
+        sess.verify = False
+        for i in range(num):
+            img_bytes = sess.get(url).content
+            img_b64 = base64.b64encode(img_bytes).decode()
+            code = self.request(img_b64, model_type=model_type, model_site=model_site).get('message')
+            with open("{}/{}_{}.jpg".format(save_path, code, hashlib.md5(img_bytes).hexdigest()), "wb") as f:
+                f.write(img_bytes)
+
+            print('result: {}'.format(
+                code,
+            ))
+
     def press_testing(self, image_list: dict, model_type=None, model_site=None):
         from multiprocessing.pool import ThreadPool
         pool = ThreadPool(500)
@@ -149,7 +174,7 @@ if __name__ == '__main__':
     # # Here you can replace it with a web request to get images in real time.
     # with open(r"D:\***.jpg", "rb") as f:
     #     img_bytes = f.read()
-    #
+
     # # Here is the code for the network request.
     # # Replace your own captcha url for testing.
     # # sess = Session()
@@ -165,34 +190,32 @@ if __name__ == '__main__':
     # pil_image.show()
     # api_params = {
     #     'image': base64.b64encode(img_bytes).decode(),
-    #     'model_type': None,
-    #     'model_site': 'patchca'
     # }
     # print(api_params)
-    # for i in range(0):
-    #     # Tornado API with authentication
-    #     resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-    #     print(resp)
-    #
-    #     # Flask API with authentication
-    #     resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-    #     print(resp)
-    #
-    #     # Tornado API without authentication
-    #     resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-    #     print(resp)
-    #
-    #     # Flask API without authentication
-    #     resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-    #     print(resp)
-    #
-    #     # API by gRPC - The fastest way.
-    #     # If you want to identify multiple verification codes continuously, please do like this:
-    #     # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes+b'\x00\xff\xff\xff\x00'+img_bytes).decode())
-    #     # b'\x00\xff\xff\xff\x00' is the split_flag defined in config.py
-    #     resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
-    #     print(resp)
-    #     pass
+    # for i in range(1):
+        # Tornado API with authentication
+        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp)
+
+        # Flask API with authentication
+        # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp)
+
+        # Tornado API without authentication
+        # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+        # print(resp)
+
+        # Flask API without authentication
+        # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+        # print(resp)
+
+        # API by gRPC - The fastest way.
+        # If you want to identify multiple verification codes continuously, please do like this:
+        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes+b'\x00\xff\xff\xff\x00'+img_bytes).decode())
+        # b'\x00\xff\xff\xff\x00' is the split_flag defined in config.py
+        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
+        # print(resp)
+        # pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
     path = r"D:\****"
@@ -202,13 +225,15 @@ if __name__ == '__main__':
         _path.split('_')[0].lower(): _image(
             os.path.join(path, _path),
             model_type=None,
-            model_site='patchca'
+            model_site=None
         )
         for i, _path in enumerate(path_list)
         if i < 1000
     }
     print(batch)
-    # NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
+    # NoAuth(DEFAULT_HOST, ServerType.TORNADO).press_testing(batch)
     # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
+    # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)
     # GoogleRPC(DEFAULT_HOST).press_testing(batch, model_site=None, model_type=None)
+    # GoogleRPC(DEFAULT_HOST).remote_iter("http://www.***.com/captcha", "D:\****", 100, model_site=None, model_type=None)
