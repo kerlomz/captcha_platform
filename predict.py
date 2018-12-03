@@ -12,7 +12,7 @@ def decode_maps(charset):
 def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig, split_char=None):
     if split_char is None:
         split_char = model.split_char
-    dense_decoded_code = _sess.run(dense_decoded, feed_dict={
+    dense_decoded_code, = _sess.run(dense_decoded, feed_dict={
         op_input: image_batch,
     })
     decoded_expression = []

@@ -3,6 +3,7 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import time
 import grpc
+import json
 import grpc_pb2
 import grpc_pb2_grpc
 import optparse
@@ -176,10 +177,22 @@ class NoAuthHandler(BaseHandler):
         return self.write(json_encode(response))
 
 
+class ServiceHandler(BaseHandler):
+
+    def get(self):
+        response = {
+            "total": interface_manager.total,
+            "online": interface_manager.online_names,
+            "support": interface_manager.support_sites
+        }
+        return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
+
+
 def make_app():
     return tornado.web.Application([
         (r"/captcha/auth/v2", AuthHandler),
         (r"/captcha/v1", NoAuthHandler),
+        (r"/service/info", ServiceHandler),
         (r".*", BaseHandler),
     ])
 

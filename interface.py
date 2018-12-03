@@ -124,6 +124,19 @@ class InterfaceManager(object):
             return
         return _default.graph_name
 
+    @property
+    def total(self):
+        return len(self.group)
+
+    @property
+    def online_names(self):
+        return [i.name for i in self.group]
+
+    @property
+    def support_sites(self):
+        support = [i.model_site for i in self.group]
+        return [j for i in support for j in i]
+
     def set_default(self, interface: Interface):
         if not interface:
             return
