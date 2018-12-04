@@ -1,5 +1,5 @@
 # Project Introduction
-This project is based on CNN+LSTM+CTC to realize verification code identification. 
+This project is based on CNN+BLSTM+CTC to realize verification code identification. 
 This project is only for deployment models, If you need to train the model, please move to https://github.com/kerlomz/captcha_trainer
 
 # Informed
@@ -42,13 +42,40 @@ This project is only for deployment models, If you need to train the model, plea
     ```
     python tornado_server.py
     ```
+    4. Port: 19953
+    ```
+    python sanic_server.py
+    ```
 
 2. Windows
     Deploy (Windows): 
     ```
-    python flask_server.py
+    python xxx_server.py
     ```
-    Port: 19951
+
+3. Request
+
+    |Request URI | Content-Type | Payload Type | Method |
+    | ----------- | ---------------- | -------- | -------- |
+    | http://localhost:[Bind port]/captcha/v1 | application/json | JSON | POST |
+
+    | Parameter | Required | Type | Description |
+    | ---------- | ---- | ------ | ------------------------ |
+    | image | Yes | String | Base64 encoding binary stream |
+    Model_site | No | String | Site name, bindable in yaml configuration |
+    | model_type | No | String | Category, bindable in yaml configuration |
+    The request is in JSON format, like: {"image": "base64 encoded image binary stream"}
+
+4. Response
+
+    | Parameter Name | Type | Description |
+    | ------- | ------ | ------------------ |
+    | message | String | Identify results or error messages |
+    | code | String | Status Code |
+    | success | String | Whether to request success |
+    
+    The return is in JSON format, like: {"message": "xxxx", "code": 0, "success": true}
+ 
 
 ## 2. G-RPC Version
 Deploy: 
@@ -68,6 +95,7 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
         - grpc_server.py
         - flask_server.py
         - tornado_server.py
+        - sanic_server.py
         - demo.py
     - model
         - model-1.yaml
@@ -93,6 +121,6 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
 This project use SATA License (Star And Thank Author License), so you have to star this project before using. Read the license carefully.
 
 # Introduction
-https://www.jianshu.com/p/fccd596ef023
+https://www.jianshu.com/p/80ef04b16efc
 
 
