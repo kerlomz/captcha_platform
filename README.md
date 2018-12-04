@@ -64,6 +64,7 @@ This project is only for deployment models, If you need to train the model, plea
     | image | Yes | String | Base64 encoding binary stream |
     Model_site | No | String | Site name, bindable in yaml configuration |
     | model_type | No | String | Category, bindable in yaml configuration |
+    
     The request is in JSON format, like: {"image": "base64 encoded image binary stream"}
 
 4. Response
