@@ -67,14 +67,14 @@ class InterfaceManager(object):
         interface = self.get_by_name(graph_name, False)
         self.remove(interface)
 
-    def get_by_sites(self, model_site, return_default=True):
+    def get_by_sites(self, model_site, size: str, return_default=True):
         match_ids = [i for i in range(len(self.group)) if model_site in self.group[i].model_site]
         max_id = match_ids[0] if match_ids else 0
         for i in match_ids:
             interface = self.group[i]
             if interface.version > self.group[i].version:
                 max_id = i
-        return self.group[max_id] if match_ids else self.default if return_default else None
+        return self.group[max_id] if match_ids else self.get_by_size(size) if return_default else None
 
     def get_by_size(self, size: str, return_default=True):
 
@@ -123,6 +123,19 @@ class InterfaceManager(object):
         if not _default:
             return
         return _default.graph_name
+
+    @property
+    def total(self):
+        return len(self.group)
+
+    @property
+    def online_names(self):
+        return [i.name for i in self.group]
+
+    @property
+    def support_sites(self):
+        support = [i.model_site for i in self.group]
+        return [j for i in support for j in i]
 
     def set_default(self, interface: Interface):
         if not interface:

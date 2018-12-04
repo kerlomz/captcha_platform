@@ -3,6 +3,7 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import time
 import grpc
+import json
 import grpc_pb2
 import grpc_pb2_grpc
 import optparse
@@ -118,6 +119,7 @@ class AuthHandler(BaseHandler):
 
 class NoAuthHandler(BaseHandler):
 
+    @tornado.gen.coroutine
     def post(self):
         start_time = time.time()
         data = self.parse_param()
@@ -142,13 +144,13 @@ class NoAuthHandler(BaseHandler):
                 model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
-            self.finish(json_encode(response))
+            return self.finish(json_encode(response))
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_site' in data:
-            interface = interface_manager.get_by_sites(model_site)
+            interface = interface_manager.get_by_sites(model_site, size_string)
         elif 'model_type' in data:
             interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:
@@ -175,10 +177,22 @@ class NoAuthHandler(BaseHandler):
         return self.write(json_encode(response))
 
 
+class ServiceHandler(BaseHandler):
+
+    def get(self):
+        response = {
+            "total": interface_manager.total,
+            "online": interface_manager.online_names,
+            "support": interface_manager.support_sites
+        }
+        return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
+
+
 def make_app():
     return tornado.web.Application([
         (r"/captcha/auth/v2", AuthHandler),
         (r"/captcha/v1", NoAuthHandler),
+        (r"/service/info", ServiceHandler),
         (r".*", BaseHandler),
     ])
 
