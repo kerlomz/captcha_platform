@@ -57,7 +57,7 @@ This project is only for deployment models, If you need to train the model, plea
 
     |Request URI | Content-Type | Payload Type | Method |
     | ----------- | ---------------- | -------- | -------- |
-    | http://localhost:[Bind port]/captcha/v1 | application/json | JSON | POST |
+    | http://localhost:[Bind-port]/captcha/v1 | application/json | JSON | POST |
 
     | Parameter | Required | Type | Description |
     | ---------- | ---- | ------ | ------------------------ |
