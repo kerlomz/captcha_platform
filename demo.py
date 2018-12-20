@@ -15,7 +15,7 @@ from constants import ServerType
 DEFAULT_HOST = "localhost"
 
 
-def _image(_path, model_type=None, model_site=None):
+def _image(_path, model_type=None, model_site=None, need_color=None):
     with open(_path, "rb") as f:
         img_bytes = f.read()
 
@@ -23,7 +23,8 @@ def _image(_path, model_type=None, model_site=None):
     return {
         'image': b64,
         'model_type': model_type,
-        'model_site': model_site
+        'model_site': model_site,
+        'need_color': need_color,
     }
 
 
@@ -225,13 +226,14 @@ if __name__ == '__main__':
         _path.split('_')[0].lower(): _image(
             os.path.join(path, _path),
             model_type=None,
-            model_site=None
+            model_site=None,
+            need_color=None,
         )
         for i, _path in enumerate(path_list)
         if i < 1000
     }
-    print(batch)
-    # NoAuth(DEFAULT_HOST, ServerType.TORNADO).press_testing(batch)
+    # print(batch)
+    # NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)

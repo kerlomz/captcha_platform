@@ -24,6 +24,8 @@ class Config(object):
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
         self.logger = logging.getLogger(self.logger_tag)
+        self.static_path = self.sys_cf['System'].get('StaticPath')
+        self.static_path = self.static_path if self.static_path else 'static'
         self.use_default_authorization = False
         self.authorization = None
         self.init_logger()

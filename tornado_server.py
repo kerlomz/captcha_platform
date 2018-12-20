@@ -79,6 +79,7 @@ class AuthHandler(BaseHandler):
         model_site = ParamUtils.filter(data.get('model_site'))
         model_name = ParamUtils.filter(data.get('model_name'))
         split_char = ParamUtils.filter(data.get('split_char'))
+        need_color = ParamUtils.filter(data.get('need_color'))
 
         if not bytes_batch:
             logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
@@ -101,7 +102,7 @@ class AuthHandler(BaseHandler):
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=need_color)
 
         if not image_batch:
             logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
@@ -138,6 +139,7 @@ class NoAuthHandler(BaseHandler):
         model_site = ParamUtils.filter(data.get('model_site'))
         model_name = ParamUtils.filter(data.get('model_name'))
         split_char = ParamUtils.filter(data.get('split_char'))
+        need_color = ParamUtils.filter(data.get('need_color'))
 
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
@@ -162,7 +164,7 @@ class NoAuthHandler(BaseHandler):
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=need_color)
 
         if not image_batch:
             logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(

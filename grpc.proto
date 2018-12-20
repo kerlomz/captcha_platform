@@ -10,6 +10,7 @@ message PredictRequest {
     string model_name = 3;
     string model_type = 4;
     string model_site = 5;
+    string need_color = 6;
 }
 
 message PredictResult {
