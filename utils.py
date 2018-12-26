@@ -150,11 +150,8 @@ class ImageUtils(object):
 
     @staticmethod
     def test_image(h):
-        """JPEG data in JFIF format"""
-        if h[6:10] == b'JFIF':
-            return 'jpeg'
-        """JPEG data in Exif format"""
-        if h[6:10] == b'Exif':
+        """JPEG"""
+        if h[:3] == b"\xff\xd8\xff":
             return 'jpeg'
         """PNG"""
         if h[:8] == b"\211PNG\r\n\032\n":
