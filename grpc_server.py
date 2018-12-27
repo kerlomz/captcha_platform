@@ -41,7 +41,7 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         if not interface:
             logger.info('Service is not ready!')
             return {"result": "", "success": False, "code": 999}
-        image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=request.need_color)
+        image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])

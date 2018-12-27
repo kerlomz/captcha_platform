@@ -113,7 +113,7 @@ def auth_request():
     elif 'model_type' in request.json:
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
-        interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+        interface = interface_manager.get_by_name(request.json['model_name'])
     else:
         interface = interface_manager.get_by_size(size_string)
 

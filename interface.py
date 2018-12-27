@@ -35,6 +35,9 @@ class Interface(object):
     def destroy(self):
         self.graph_sess.destroy()
 
+    def separate_color(self, image_bytes, color):
+        return self.graph_sess.separate_color(image_bytes, color)
+
     def predict_batch(self, image_batch, split_char=None):
         predict_text = predict_func(
             image_batch,

@@ -7,6 +7,23 @@ class Config:
     split_flag = b'\x00\xff\xff\xff\x00'
 
 
+class Color:
+    Black = 0
+    Red = 1
+    Blue = 2
+    Yellow = 3
+    Green = 4
+
+
+color_map = {
+    'black': Color.Black,
+    'red': Color.Red,
+    'blue': Color.Blue,
+    'yellow': Color.Yellow,
+    'green': Color.Green
+}
+
+
 class ServerType(str):
     FLASK = 19951
     TORNADO = 19952

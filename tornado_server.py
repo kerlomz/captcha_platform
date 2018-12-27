@@ -2,16 +2,14 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import time
-import grpc
 import json
-import grpc_pb2
-import grpc_pb2_grpc
 import optparse
 import threading
 import tornado.ioloop
 import tornado.log
+import tensorflow as tf
 from tornado.web import RequestHandler
-from constants import Response
+from constants import Response, color_map
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager
@@ -22,18 +20,7 @@ from watchdog.observers import Observer
 from event_handler import FileEventHandler
 
 sign = Signature(ServerType.TORNADO)
-
-
-def rpc_request(image, model_name="", model_type=""):
-    channel = grpc.insecure_channel('127.0.0.1:50054')
-    stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(
-        image=image,
-        split_char=',',
-        model_name=model_name,
-        model_type=model_type
-    ))
-    return {"message": response.result, "code": response.code, "success": response.success}
+color_session = tf.Session()
 
 
 class BaseHandler(RequestHandler):
@@ -164,7 +151,10 @@ class NoAuthHandler(BaseHandler):
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=need_color)
+        if need_color:
+            bytes_batch = [interface.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(

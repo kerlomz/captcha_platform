@@ -133,11 +133,13 @@ class ModelConfig(Model):
         self.binaryzation = None
         self.smooth = None
         self.blur = None
+        self.replace_transparent = None
         self.model_site = None
         self.version = None
         self.mac_address = None
         self.compile_model_path = None
         self.model_name_md5 = None
+        self.color_engine = None
         self.cf_model = self.read_conf
         self.assignment()
         self.graph_name = "{}&{}".format(self.target_model, self.size_string)
@@ -173,13 +175,16 @@ class ModelConfig(Model):
 
         self.image_height = self.cf_model['Model'].get('ImageHeight')
         self.image_width = self.cf_model['Model'].get('ImageWidth')
+        self.color_engine = self.cf_model['Model'].get('ColorEngine')
+        self.color_engine = self.color_engine if self.color_engine else 'opencv'
 
         self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
         self.blur = self.cf_model['Pretreatment'].get('Blur')
+        self.blur = self.cf_model['Pretreatment'].get('Blur')
         self.resize = self.cf_model['Pretreatment'].get('Resize')
         self.resize = self.resize if self.resize else [self.image_width, self.image_height]
-
+        self.replace_transparent = self.cf_model['Pretreatment'].get('ReplaceTransparent')
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
         if not os.path.exists(self.compile_model_path):
             raise Exception(
