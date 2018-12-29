@@ -70,8 +70,12 @@ class InterfaceManager(object):
         interface = self.get_by_name(graph_name, False)
         self.remove(interface)
 
-    def get_by_sites(self, model_site, size: str, return_default=True):
-        match_ids = [i for i in range(len(self.group)) if model_site in self.group[i].model_site]
+    def get_by_sites(self, model_site, size: str, return_default=True, strict=True):
+        match_ids = [i for i in range(len(self.group)) if (
+            model_site in self.group[i].model_site
+            if strict
+            else model_site in self.group[i].model_site and size == self.group[i].size_str
+        )]
         max_id = match_ids[0] if match_ids else 0
         for i in match_ids:
             interface = self.group[i]

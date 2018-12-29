@@ -20,6 +20,8 @@ class Config(object):
         self.secret_key = None
         self.default_model = self.sys_cf['System']['DefaultModel']
         self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
+        self.strict_sites = self.sys_cf['System'].get('StrictSites')
+        self.strict_sites = True if self.strict_sites is None else self.strict_sites
         self.log_path = "logs"
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
@@ -41,9 +43,13 @@ class Config(object):
             interval=1,
             backupCount=180
         )
+        self.logger.propagate = False
+        stream_handler = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
+        stream_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
+        self.logger.addHandler(stream_handler)
 
     def assignment(self):
         # ---AUTHORIZATION START---
