@@ -54,15 +54,17 @@ class ImageUtils(object):
         self.model = model
 
     @staticmethod
-    def get_bytes_batch(base64_img):
+    def get_bytes_batch(base64_or_bytes):
         response = Response()
         try:
-            if isinstance(base64_img, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img if isinstance(i, str)]
+            if isinstance(base64_or_bytes, bytes):
+                bytes_batch = [base64_or_bytes]
+            elif isinstance(base64_or_bytes, list):
+                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
                 if not bytes_batch:
-                    bytes_batch = [base64.b64decode(i) for i in base64_img if isinstance(i, bytes)]
+                    bytes_batch = [base64.b64decode(i) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
-                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(Config.split_flag)
+                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(Config.split_flag)
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]

@@ -33,16 +33,16 @@ class GraphSession(object):
         )
         self.graph_def = self.graph.as_graph_def()
         self.load_model()
-        if self.model_conf.color_engine == 'k-means':
-            self.color_graph = tf.Graph()
-            self.color_sess = tf.Session(graph=self.color_graph)
-            with self.color_graph.as_default():
-                self.img_holder = tf.placeholder(dtype=tf.int32)
-                self.black = tf.constant([[0, 0, 0]], dtype=tf.int32, name='black')
-                self.red = tf.constant([[0, 0, 255]], dtype=tf.int32, name='red')
-                self.yellow = tf.constant([[0, 255, 255]], dtype=tf.int32, name='yellow')
-                self.blue = tf.constant([[255, 0, 0]], dtype=tf.int32, name='blue')
-                self.green = tf.constant([[0, 255, 0]], dtype=tf.int32, name='green')
+        # if self.model_conf.color_engine == 'k-means':
+        self.color_graph = tf.Graph()
+        self.color_sess = tf.Session(graph=self.color_graph)
+        with self.color_graph.as_default():
+            self.img_holder = tf.placeholder(dtype=tf.int32)
+            self.black = tf.constant([[0, 0, 0]], dtype=tf.int32, name='black')
+            self.red = tf.constant([[0, 0, 255]], dtype=tf.int32, name='red')
+            self.yellow = tf.constant([[0, 255, 255]], dtype=tf.int32, name='yellow')
+            self.blue = tf.constant([[255, 0, 0]], dtype=tf.int32, name='blue')
+            self.green = tf.constant([[0, 255, 0]], dtype=tf.int32, name='green')
 
     def load_model(self):
         # Here is for debugging, positioning error source use.

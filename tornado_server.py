@@ -170,6 +170,45 @@ class NoAuthHandler(BaseHandler):
         return self.write(json_encode(response))
 
 
+class SimpleHandler(BaseHandler):
+
+    def post(self):
+        start_time = time.time()
+
+        bytes_batch, response = ImageUtils.get_bytes_batch(self.request.body)
+
+        if not bytes_batch:
+            logger.error('Response[{}] - {} ms'.format(
+                response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        size_string = "{}x{}".format(image_size[0], image_size[1])
+        interface = interface_manager.get_by_size(size_string)
+        if not interface:
+            logger.info('Service is not ready!')
+            return {"message": "", "success": False, "code": 999}
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            logger.error('[{}] - Size[{}] - Response[{}] - {} ms'.format(
+                interface.name, size_string, response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
+
+        result = interface.predict_batch(image_batch, None)
+        logger.info('[{}] - Size[{}] - Predict Result[{}] - {} ms'.format(
+            interface.name, size_string, result, (time.time() - start_time) * 1000)
+        )
+        response['message'] = result
+        return self.write(json_encode(response))
+
+
 class ServiceHandler(BaseHandler):
 
     def get(self):
@@ -193,6 +232,7 @@ def make_app():
     return tornado.web.Application([
         (r"/captcha/auth/v2", AuthHandler),
         (r"/captcha/v1", NoAuthHandler),
+        (r"/captcha/v3", SimpleHandler),
         (r"/service/info", ServiceHandler),
         (r"/service/logs/(.*)", FileHandler, {"path": "logs"}),
         (r".*", BaseHandler),
