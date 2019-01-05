@@ -2,18 +2,15 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import time
-import grpc
-import grpc_pb2
-import grpc_pb2_grpc
 import optparse
 import threading
-# from logging import basicConfig, INFO
 from flask import *
 from flask_caching import Cache
 from gevent import monkey
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from config import Config
+from constants import color_map
 from utils import ImageUtils
 from constants import Response
 from interface import InterfaceManager
@@ -28,18 +25,6 @@ app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 sign = Signature(ServerType.FLASK)
 _except = Response()
-
-
-@cache.cached(timeout=30)
-@app.before_request
-def before_request():
-    try:
-        # Here you can add the relevant code to get the authentication information from the custom database.
-        # The existing code is for reference only in terms of format.
-        sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
-    except Exception:
-        # Here Exception needs to be changed to the corresponding exception you need.
-        raise InvalidUsage(**_except.UNKNOWN_SERVER_ERROR)
 
 
 @app.after_request
@@ -72,18 +57,6 @@ def permission_denied(error=None):
     return jsonify(message=message, code=error.code, success=False)
 
 
-def rpc_request(image, model_name="", model_type=""):
-    channel = grpc.insecure_channel('127.0.0.1:50054')
-    stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(
-        image=image,
-        split_char=',',
-        model_name=model_name,
-        model_type=model_type
-    ))
-    return {"message": response.result, "code": response.code, "success": response.success}
-
-
 @app.route('/captcha/auth/v2', methods=['POST'])
 @sign.signature_required  # This decorator is required for certification.
 def auth_request():
@@ -109,15 +82,18 @@ def auth_request():
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
     if 'model_site' in request.json:
-        interface = interface_manager.get_by_sites(request.json['model_site'], size_string)
+        interface = interface_manager.get_by_sites(request.json['model_site'], size_string, strict=system_config.strict_sites)
     elif 'model_type' in request.json:
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
-        interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+        interface = interface_manager.get_by_name(request.json['model_name'])
     else:
         interface = interface_manager.get_by_size(size_string)
 
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
+
+    if 'need_color' in request.json and request.json['need_color']:
+        bytes_batch = [interface.separate_color(_, color_map[request.json['need_color']]) for _ in bytes_batch]
 
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
@@ -165,7 +141,7 @@ def common_request():
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
     if 'model_site' in request.json:
-        interface = interface_manager.get_by_sites(request.json['model_site'], size_string)
+        interface = interface_manager.get_by_sites(request.json['model_site'], size_string, strict=system_config.strict_sites)
     elif 'model_type' in request.json:
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
@@ -174,6 +150,9 @@ def common_request():
         interface = interface_manager.get_by_size(size_string)
 
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
+
+    if 'need_color' in request.json and request.json['need_color']:
+        bytes_batch = [interface.separate_color(_, color_map[request.json['need_color']]) for _ in bytes_batch]
 
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 

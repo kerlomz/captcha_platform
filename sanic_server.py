@@ -5,6 +5,7 @@ import time
 import optparse
 import threading
 from config import Config
+from constants import color_map
 from utils import ImageUtils
 from interface import InterfaceManager
 from watchdog.observers import Observer
@@ -39,7 +40,7 @@ def common_request(request):
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
     if 'model_site' in request.json:
-        interface = interface_manager.get_by_sites(request.json['model_site'], size_string)
+        interface = interface_manager.get_by_sites(request.json['model_site'], size_string, strict=system_config.strict_sites)
     elif 'model_type' in request.json:
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
@@ -48,6 +49,9 @@ def common_request(request):
         interface = interface_manager.get_by_size(size_string)
 
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
+
+    if 'need_color' in request.json and request.json['need_color']:
+        bytes_batch = [interface.separate_color(_, color_map[request.json['need_color']]) for _ in bytes_batch]
 
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 

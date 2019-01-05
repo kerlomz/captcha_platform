@@ -9,6 +9,7 @@ import binascii
 import datetime
 import hashlib
 import numpy as np
+import tensorflow as tf
 from PIL import Image as PIL_Image
 from constants import Response, Config
 from pretreatment import preprocessing
@@ -53,15 +54,17 @@ class ImageUtils(object):
         self.model = model
 
     @staticmethod
-    def get_bytes_batch(base64_img):
+    def get_bytes_batch(base64_or_bytes):
         response = Response()
         try:
-            if isinstance(base64_img, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_img if isinstance(i, str)]
+            if isinstance(base64_or_bytes, bytes):
+                bytes_batch = [base64_or_bytes]
+            elif isinstance(base64_or_bytes, list):
+                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
                 if not bytes_batch:
-                    bytes_batch = [base64.b64decode(i) for i in base64_img if isinstance(i, bytes)]
+                    bytes_batch = [base64.b64decode(i) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
-                bytes_batch = base64.b64decode(base64_img.encode('utf-8')).split(Config.split_flag)
+                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(Config.split_flag)
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]
@@ -70,59 +73,32 @@ class ImageUtils(object):
         return bytes_batch, response.SUCCESS
 
     @staticmethod
-    def get_image_batch(model: ModelConfig, bytes_batch, color=None):
+    def get_image_batch(model: ModelConfig, bytes_batch):
         # Note that there are two return objects here.
         # 1.image_batch, 2.response
 
         response = Response()
 
-        hsv_map = {
-            "blue": {
-                "lower_hsv": np.array([100, 128, 46]),
-                "high_hsv": np.array([124, 255, 255])
-            },
-            "red": {
-                "lower_hsv": np.array([0, 128, 46]),
-                "high_hsv": np.array([5, 255, 255])
-            },
-            "yellow": {
-                "lower_hsv": np.array([15, 128, 46]),
-                "high_hsv": np.array([34, 255, 255])
-            },
-            "green": {
-                "lower_hsv": np.array([35, 128, 46]),
-                "high_hsv": np.array([77, 255, 255])
-            },
-            "black": {
-                "lower_hsv": np.array([0, 0, 0]),
-                "high_hsv": np.array([180, 255, 46])
-            }
-        }
+        def load_image(image_bytes):
+            data_stream = io.BytesIO(image_bytes)
+            pil_image = PIL_Image.open(data_stream)
+            rgb = pil_image.split()
+            size = pil_image.size
 
-        def separate_color(pil_image, color):
-            hsv = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_BGR2HSV)
-            lower_hsv = hsv_map[color]['lower_hsv']
-            high_hsv = hsv_map[color]['high_hsv']
-            mask = cv2.inRange(hsv, lowerb=lower_hsv, upperb=high_hsv)
-            return mask
+            if len(rgb) > 3 and model.replace_transparent:
+                background = PIL_Image.new('RGB', pil_image.size, (255, 255, 255))
+                background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
+                pil_image = background
+            pil_image = pil_image.convert('L')
 
-        def load_image(image_bytes, color=None):
-
-            if color and color in ['red', 'blue', 'black', 'green', 'yellow']:
-                image = np.asarray(bytearray(image_bytes), dtype="uint8")
-                image = cv2.imdecode(image, -1)
-                image = separate_color(image, color)
-            else:
-                data_stream = io.BytesIO(image_bytes)
-                pil_image = PIL_Image.open(data_stream).convert('RGB')
-                image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-            image = preprocessing(image, model.binaryzation, model.smooth, model.blur).astype(np.float32)
+            # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
+            image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(np.float32)
             image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
             return image[:, :, np.newaxis] / 255.
 
         try:
-            image_batch = [load_image(i, color=color) for i in bytes_batch]
+            image_batch = [load_image(i) for i in bytes_batch]
             return image_batch, response.SUCCESS
         except OSError:
             return None, response.IMAGE_DAMAGE

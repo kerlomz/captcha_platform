@@ -2,16 +2,14 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import time
-import grpc
 import json
-import grpc_pb2
-import grpc_pb2_grpc
 import optparse
 import threading
 import tornado.ioloop
 import tornado.log
+import tensorflow as tf
 from tornado.web import RequestHandler
-from constants import Response
+from constants import Response, color_map
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager
@@ -22,18 +20,7 @@ from watchdog.observers import Observer
 from event_handler import FileEventHandler
 
 sign = Signature(ServerType.TORNADO)
-
-
-def rpc_request(image, model_name="", model_type=""):
-    channel = grpc.insecure_channel('127.0.0.1:50054')
-    stub = grpc_pb2_grpc.PredictStub(channel)
-    response = stub.predict(grpc_pb2.PredictRequest(
-        image=image,
-        split_char=',',
-        model_name=model_name,
-        model_type=model_type
-    ))
-    return {"message": response.result, "code": response.code, "success": response.success}
+color_session = tf.Session()
 
 
 class BaseHandler(RequestHandler):
@@ -92,7 +79,7 @@ class AuthHandler(BaseHandler):
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_site' in data:
-            interface = interface_manager.get_by_sites(model_site, size_string)
+            interface = interface_manager.get_by_sites(model_site, size_string, strict=system_config.strict_sites)
         elif 'model_type' in data:
             interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:
@@ -102,7 +89,10 @@ class AuthHandler(BaseHandler):
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=need_color)
+        if need_color:
+            bytes_batch = [interface.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
@@ -122,19 +112,12 @@ class AuthHandler(BaseHandler):
 
 class NoAuthHandler(BaseHandler):
 
-    @tornado.gen.coroutine
     def post(self):
         start_time = time.time()
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
 
-        # # You can separate the http service and the gRPC service like this:
-        # response = rpc_request(
-        #     data['image'],
-        #     data['model_name'] if 'model_name' in data else '',
-        #     data['model_type'] if 'model_type' in data else ''
-        # )
         model_type = ParamUtils.filter(data.get('model_type'))
         model_site = ParamUtils.filter(data.get('model_site'))
         model_name = ParamUtils.filter(data.get('model_name'))
@@ -154,17 +137,23 @@ class NoAuthHandler(BaseHandler):
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_site' in data:
-            interface = interface_manager.get_by_sites(model_site, size_string)
+            interface = interface_manager.get_by_sites(model_site, size_string, strict=system_config.strict_sites)
         elif 'model_type' in data:
             interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data:
             interface = interface_manager.get_by_name(model_name)
         else:
             interface = interface_manager.get_by_size(size_string)
+        if not interface:
+            logger.info('Service is not ready!')
+            return {"message": "", "success": False, "code": 999}
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=need_color)
+        if need_color:
+            bytes_batch = [interface.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
@@ -181,6 +170,45 @@ class NoAuthHandler(BaseHandler):
         return self.write(json_encode(response))
 
 
+class SimpleHandler(BaseHandler):
+
+    def post(self):
+        start_time = time.time()
+
+        bytes_batch, response = ImageUtils.get_bytes_batch(self.request.body)
+
+        if not bytes_batch:
+            logger.error('Response[{}] - {} ms'.format(
+                response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
+
+        image_sample = bytes_batch[0]
+        image_size = ImageUtils.size_of_image(image_sample)
+        size_string = "{}x{}".format(image_size[0], image_size[1])
+        interface = interface_manager.get_by_size(size_string)
+        if not interface:
+            logger.info('Service is not ready!')
+            return {"message": "", "success": False, "code": 999}
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+
+        if not image_batch:
+            logger.error('[{}] - Size[{}] - Response[{}] - {} ms'.format(
+                interface.name, size_string, response,
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json_encode(response))
+
+        result = interface.predict_batch(image_batch, None)
+        logger.info('[{}] - Size[{}] - Predict Result[{}] - {} ms'.format(
+            interface.name, size_string, result, (time.time() - start_time) * 1000)
+        )
+        response['message'] = result
+        return self.write(json_encode(response))
+
+
 class ServiceHandler(BaseHandler):
 
     def get(self):
@@ -192,11 +220,21 @@ class ServiceHandler(BaseHandler):
         return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
 
 
+class FileHandler(tornado.web.StaticFileHandler):
+    def data_received(self, chunk):
+        pass
+
+    def set_extra_headers(self, path):
+        self.set_header("Cache-control", "no-cache")
+
+
 def make_app():
     return tornado.web.Application([
         (r"/captcha/auth/v2", AuthHandler),
         (r"/captcha/v1", NoAuthHandler),
+        (r"/captcha/v3", SimpleHandler),
         (r"/service/info", ServiceHandler),
+        (r"/service/logs/(.*)", FileHandler, {"path": "logs"}),
         (r".*", BaseHandler),
     ])
 

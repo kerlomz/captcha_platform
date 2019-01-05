@@ -13,6 +13,7 @@ import optparse
 from utils import ImageUtils
 from interface import InterfaceManager
 from config import Config
+from constants import color_map
 from event_handler import FileEventHandler
 from watchdog.observers import Observer
 
@@ -31,7 +32,7 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if request.model_site:
-            interface = interface_manager.get_by_sites(request.model_site, size_string)
+            interface = interface_manager.get_by_sites(request.model_site, size_string, strict=system_config.strict_sites)
         elif request.model_name:
             interface = interface_manager.get_by_name(request.model_name)
         elif request.model_type:
@@ -41,7 +42,11 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         if not interface:
             logger.info('Service is not ready!')
             return {"result": "", "success": False, "code": 999}
-        image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, color=request.need_color)
+
+        if request.need_color:
+            bytes_batch = [interface.separate_color(_, color_map[request.need_color]) for _ in bytes_batch]
+
+        image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
             return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
