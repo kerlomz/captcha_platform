@@ -60,6 +60,11 @@ class AuthHandler(BaseHandler):
         data = self.parse_param()
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
+
+        if interface_manager.total == 0:
+            logger.info('There is currently no model deployment and services are not available.')
+            return {"message": "", "success": False, "code": -999}
+
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         model_type = ParamUtils.filter(data.get('model_type'))
@@ -124,6 +129,10 @@ class NoAuthHandler(BaseHandler):
         split_char = ParamUtils.filter(data.get('split_char'))
         need_color = ParamUtils.filter(data.get('need_color'))
 
+        if interface_manager.total == 0:
+            logger.info('There is currently no model deployment and services are not available.')
+            return {"message": "", "success": False, "code": -999}
+
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
@@ -175,6 +184,10 @@ class SimpleHandler(BaseHandler):
     def post(self):
         start_time = time.time()
 
+        if interface_manager.total == 0:
+            logger.info('There is currently no model deployment and services are not available.')
+            return {"message": "", "success": False, "code": -999}
+
         bytes_batch, response = ImageUtils.get_bytes_batch(self.request.body)
 
         if not bytes_batch:
@@ -187,6 +200,7 @@ class SimpleHandler(BaseHandler):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
+
         interface = interface_manager.get_by_size(size_string)
         if not interface:
             logger.info('Service is not ready!')

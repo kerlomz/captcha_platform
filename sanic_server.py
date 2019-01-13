@@ -26,6 +26,10 @@ def common_request(request):
     if not request.json or 'image' not in request.json:
         return
 
+    if interface_manager.total == 0:
+        logger.info('There is currently no model deployment and services are not available.')
+        return json({"message": "", "success": False, "code": -999})
+
     bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:

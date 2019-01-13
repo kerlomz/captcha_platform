@@ -25,6 +25,11 @@ class Predict(grpc_pb2_grpc.PredictServicer):
     def predict(self, request, context):
         start_time = time.time()
         bytes_batch, status = ImageUtils.get_bytes_batch(request.image)
+
+        if interface_manager.total == 0:
+            logger.info('There is currently no model deployment and services are not available.')
+            return {"result": "", "success": False, "code": -999}
+
         if not bytes_batch:
             return grpc_pb2.PredictResult(result="", success=status['success'], code=status['code'])
 

@@ -68,6 +68,10 @@ def auth_request():
     if not request.json or 'image' not in request.json:
         abort(400)
 
+    if interface_manager.total == 0:
+        logger.info('There is currently no model deployment and services are not available.')
+        return json.dumps({"message": "", "success": False, "code": -999})
+
     bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:
@@ -126,6 +130,10 @@ def common_request():
     start_time = time.time()
     if not request.json or 'image' not in request.json:
         abort(400)
+
+    if interface_manager.total == 0:
+        logger.info('There is currently no model deployment and services are not available.')
+        return json.dumps({"message": "", "success": False, "code": -999})
 
     bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
 

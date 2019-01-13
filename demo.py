@@ -219,7 +219,7 @@ if __name__ == '__main__':
         # pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    path = r"D:\****"
+    path = r"F:\TransSet\kap-1"
     path_list = os.listdir(path)
     print(path_list)
     batch = {
@@ -234,8 +234,8 @@ if __name__ == '__main__':
     }
     # print(batch)
     # NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
-    # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
+    NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
-    GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)
+    # GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)
     # GoogleRPC(DEFAULT_HOST).press_testing(batch, model_site=None, model_type=None)
     # GoogleRPC(DEFAULT_HOST).remote_iter("http://www.***.com/captcha", "D:\****", 100, model_site=None, model_type=None)

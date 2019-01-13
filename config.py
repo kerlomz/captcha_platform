@@ -193,8 +193,10 @@ class ModelConfig(Model):
         self.replace_transparent = self.cf_model['Pretreatment'].get('ReplaceTransparent')
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
         if not os.path.exists(self.compile_model_path):
+            if not os.path.exists(self.graph_path):
+                os.makedirs(self.graph_path)
             raise Exception(
-                '{} not found, please put the trained model in the model directory.'.format(self.compile_model_path)
+                '{} not found, please put the trained model in the graph directory.'.format(self.compile_model_path)
             )
 
     def size_match(self, size_str):
