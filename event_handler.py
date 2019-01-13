@@ -24,14 +24,23 @@ class FileEventHandler(FileSystemEventHandler):
         model_list = [os.path.join(self.model_conf_path, i) for i in model_list if i.endswith("yaml")]
         for model in model_list:
             self._add(model, is_first=True)
-        self.logger.info(
-            "\n - Number of interfaces: {}"
-            "\n - Current online interface: \n\t - {}"
-            "\n - The default Interface is: {}".format(
-                len(self.interface_manager.group),
-                "\n\t - ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
-                self.interface_manager.default_name
-            ))
+        if self.interface_manager.total == 0:
+            self.logger.info(
+                "\n - Number of interfaces: {}"
+                "\n - There is currently no model deployment"
+                "\n - Services are not available"
+                "\n[ Please check the graph and model path whether the pb file and yaml file are placed. ]".format(
+                    self.interface_manager.total,
+                ))
+        else:
+            self.logger.info(
+                "\n - Number of interfaces: {}"
+                "\n - Current online interface: \n\t - {}"
+                "\n - The default Interface is: {}".format(
+                    self.interface_manager.total,
+                    "\n\t - ".join(["[{}]".format(v) for k, v in self.name_map.items()]),
+                    self.interface_manager.default_name
+                ))
 
     def _add(self, src_path, is_first=False):
         try:
