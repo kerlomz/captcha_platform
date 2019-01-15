@@ -147,6 +147,7 @@ class ModelConfig(Model):
         self.model_name_md5 = None
         self.color_engine = None
         self.cf_model = self.read_conf
+        self.model_exists = False
         self.assignment()
         self.graph_name = "{}&{}".format(self.target_model, self.size_string)
 
@@ -195,9 +196,11 @@ class ModelConfig(Model):
         if not os.path.exists(self.compile_model_path):
             if not os.path.exists(self.graph_path):
                 os.makedirs(self.graph_path)
-            raise Exception(
+            self.logger.error(
                 '{} not found, please put the trained model in the graph directory.'.format(self.compile_model_path)
             )
+        else:
+            self.model_exists = True
 
     def size_match(self, size_str):
         return size_str == self.size_string

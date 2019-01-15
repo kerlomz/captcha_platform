@@ -46,6 +46,10 @@ class FileEventHandler(FileSystemEventHandler):
     def _add(self, src_path, is_first=False, count=0):
         try:
             model_path = str(src_path)
+            path_exists = os.path.exists(model_path)
+            if not path_exists and count > 0:
+                self.logger.error("{} not found, retry attempt is terminated.".format(model_path))
+                return
             if 'model_demo.yaml' in model_path:
                 self.logger.warning(
                     "\n-------------------------------------------------------------------\n"
@@ -98,7 +102,7 @@ class FileEventHandler(FileSystemEventHandler):
 
         except Exception as e:
             self.interface_manager.report(src_path)
-            print(e.args)
+            self.logger.error(e)
 
     def delete(self, src_path):
         try:
@@ -110,11 +114,11 @@ class FileEventHandler(FileSystemEventHandler):
                 self.name_map.pop(inner_key)
                 self.logger.info("Unload the model: {} ({})".format(graph_name, inner_key))
         except Exception as e:
-            print(e)
+            self.logger.error("Config File [{}] does not exist.".format(str(e).replace("'", "")))
 
     def on_created(self, event):
         if event.is_directory:
-            print("directory created:{0}".format(event.src_path))
+            self.logger.info("directory created:{0}".format(event.src_path))
         else:
             model_path = str(event.src_path)
             self._add(model_path)
@@ -129,12 +133,14 @@ class FileEventHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         if event.is_directory:
-            print("directory deleted:{0}".format(event.src_path))
+            self.logger.info("directory deleted:{0}".format(event.src_path))
         else:
             model_path = str(event.src_path)
             if model_path in self.interface_manager.invalid_group:
                 self.interface_manager.invalid_group.pop(model_path)
-            self.delete(model_path)
+            inner_key = PathUtils.get_file_name(model_path)
+            if inner_key in self.name_map:
+                self.delete(model_path)
             self.logger.info(
                 "\n - Number of interfaces: {}"
                 "\n - Current online interface: \n\t - {}"
