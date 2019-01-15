@@ -52,69 +52,6 @@ class BaseHandler(RequestHandler):
         return self.finish(system.get(code) if code in system.keys() else json_encode(self.exception.find(code)))
 
 
-class AuthHandler(BaseHandler):
-
-    @sign.signature_required
-    def post(self):
-        start_time = time.time()
-        data = self.parse_param()
-        if 'image' not in data.keys():
-            raise tornado.web.HTTPError(400)
-
-        if interface_manager.total == 0:
-            logger.info('There is currently no model deployment and services are not available.')
-            return {"message": "", "success": False, "code": -999}
-
-        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
-
-        model_type = ParamUtils.filter(data.get('model_type'))
-        model_site = ParamUtils.filter(data.get('model_site'))
-        model_name = ParamUtils.filter(data.get('model_name'))
-        split_char = ParamUtils.filter(data.get('split_char'))
-        need_color = ParamUtils.filter(data.get('need_color'))
-
-        if not bytes_batch:
-            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                model_type, model_site, response,
-                (time.time() - start_time) * 1000)
-            )
-            self.finish(json_encode(response))
-
-        image_sample = bytes_batch[0]
-        image_size = ImageUtils.size_of_image(image_sample)
-        size_string = "{}x{}".format(image_size[0], image_size[1])
-        if 'model_site' in data and data['model_site']:
-            interface = interface_manager.get_by_sites(model_site, size_string, strict=system_config.strict_sites)
-        elif 'model_type' in data and data['model_type']:
-            interface = interface_manager.get_by_type_size(size_string, model_type)
-        elif 'model_name' in data and data['model_name']:
-            interface = interface_manager.get_by_name(model_name)
-        else:
-            interface = interface_manager.get_by_size(size_string)
-
-        split_char = split_char if 'split_char' in data else interface.model_conf.split_char
-
-        if need_color:
-            bytes_batch = [interface.separate_color(_, color_map[need_color]) for _ in bytes_batch]
-
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
-
-        if not image_batch:
-            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                model_type, model_site, response,
-                (time.time() - start_time) * 1000)
-            )
-            return self.finish(json_encode(response))
-
-        result = interface.predict_batch(image_batch, split_char)
-        logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
-            interface.name, size_string, model_type, model_site, result,
-            (time.time() - start_time) * 1000)
-        )
-        response['message'] = result
-        return self.write(json_encode(response))
-
-
 class NoAuthHandler(BaseHandler):
 
     def post(self):
@@ -131,13 +68,12 @@ class NoAuthHandler(BaseHandler):
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
-            return {"message": "", "success": False, "code": -999}
-
+            return self.finish(json_encode({"message": "", "success": False, "code": -999}))
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
-            logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                model_type, model_site, response,
+            logger.error('[{} {}] | Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, model_type, model_site, response,
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
@@ -155,7 +91,7 @@ class NoAuthHandler(BaseHandler):
             interface = interface_manager.get_by_size(size_string)
         if not interface:
             logger.info('Service is not ready!')
-            return {"message": "", "success": False, "code": 999}
+            return self.finish(json_encode({"message": "", "success": False, "code": 999}))
 
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
@@ -165,18 +101,26 @@ class NoAuthHandler(BaseHandler):
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
-            logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                interface.name, size_string, model_type, model_site, response,
-                (time.time() - start_time) * 1000)
+            logger.error('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, response,
+                round((time.time() - start_time) * 1000), 2)
             )
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
-        logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
-            interface.name, size_string, model_type, model_site, result, (time.time() - start_time) * 1000)
+        logger.info('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Predict[{}] - {} ms'.format(
+            self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, result,
+            round((time.time() - start_time) * 1000), 2)
         )
         response['message'] = result
         return self.write(json_encode(response))
+
+
+class AuthHandler(NoAuthHandler):
+
+    @sign.signature_required
+    def post(self):
+        return super().post()
 
 
 class SimpleHandler(BaseHandler):
@@ -186,7 +130,7 @@ class SimpleHandler(BaseHandler):
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
-            return {"message": "", "success": False, "code": -999}
+            return self.finish(json_encode({"message": "", "success": False, "code": -999}))
 
         bytes_batch, response = ImageUtils.get_bytes_batch(self.request.body)
 
@@ -204,7 +148,7 @@ class SimpleHandler(BaseHandler):
         interface = interface_manager.get_by_size(size_string)
         if not interface:
             logger.info('Service is not ready!')
-            return {"message": "", "success": False, "code": 999}
+            return self.finish(json_encode({"message": "", "success": False, "code": 999}))
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
@@ -216,7 +160,7 @@ class SimpleHandler(BaseHandler):
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, None)
-        logger.info('[{}] - Size[{}] - Predict Result[{}] - {} ms'.format(
+        logger.info('[{}] - Size[{}] - Predict[{}] - {} ms'.format(
             interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
         response['message'] = result
@@ -229,7 +173,8 @@ class ServiceHandler(BaseHandler):
         response = {
             "total": interface_manager.total,
             "online": interface_manager.online_names,
-            "support": interface_manager.support_sites
+            "support": interface_manager.support_sites,
+            "invalid": interface_manager.invalid_group
         }
         return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
 

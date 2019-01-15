@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import os
-
+import time
 from graph_session import GraphSession
 from predict import predict_func
 
@@ -19,10 +19,11 @@ class Interface(object):
         self.model_type = self.graph_sess.model_type
         self.model_site = self.graph_sess.model_site
         self.version = self.graph_sess.version
-        self.sess = self.graph_sess.session
-        self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
-        self.x = self.sess.graph.get_tensor_by_name('input:0')
-        self.sess.graph.finalize()
+        if self.graph_sess.loaded:
+            self.sess = self.graph_sess.session
+            self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
+            self.x = self.sess.graph.get_tensor_by_name('input:0')
+            self.sess.graph.finalize()
 
     @property
     def name(self):
@@ -54,6 +55,7 @@ class InterfaceManager(object):
 
     def __init__(self, interface: Interface = None):
         self.group = []
+        self.invalid_group = {}
         self.set_default(interface)
 
     def add(self, interface: Interface):
@@ -65,6 +67,9 @@ class InterfaceManager(object):
         if interface in self.group:
             interface.destroy()
             self.group.remove(interface)
+
+    def report(self, model):
+        self.invalid_group[model] = {"create_time": time.asctime(time.localtime(time.time()))}
 
     def remove_by_name(self, graph_name):
         interface = self.get_by_name(graph_name, False)

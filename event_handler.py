@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import os
+import time
 from watchdog.events import *
 from config import ModelConfig, Config
 from graph_session import GraphSession
@@ -42,7 +43,7 @@ class FileEventHandler(FileSystemEventHandler):
                     self.interface_manager.default_name
                 ))
 
-    def _add(self, src_path, is_first=False):
+    def _add(self, src_path, is_first=False, count=0):
         try:
             model_path = str(src_path)
             if 'model_demo.yaml' in model_path:
@@ -77,17 +78,27 @@ class FileEventHandler(FileSystemEventHandler):
 
                 inner_value = model_conf.graph_name
                 graph_session = GraphSession(model_conf)
-                interface = Interface(graph_session)
-                if inner_name == self.conf.default_model:
-                    self.interface_manager.set_default(interface)
+                if graph_session.loaded:
+                    interface = Interface(graph_session)
+                    if inner_name == self.conf.default_model:
+                        self.interface_manager.set_default(interface)
+                    else:
+                        self.interface_manager.add(interface)
+                    self.logger.info("{} a new model: {} ({})".format(
+                        "Inited" if is_first else "Added", inner_value, inner_key
+                    ))
+                    self.name_map[inner_key] = inner_value
+                    if src_path in self.interface_manager.invalid_group:
+                        self.interface_manager.invalid_group.pop(src_path)
                 else:
-                    self.interface_manager.add(interface)
-                self.logger.info("{} a new model: {} ({})".format(
-                    "Inited" if is_first else "Added", inner_value, inner_key
-                ))
-                self.name_map[inner_key] = inner_value
+                    self.interface_manager.report(src_path)
+                    if count < 12 and not is_first:
+                        time.sleep(5)
+                        return self._add(src_path, is_first=is_first, count=count+1)
+
         except Exception as e:
-            print(e)
+            self.interface_manager.report(src_path)
+            print(e.args)
 
     def delete(self, src_path):
         try:
@@ -121,6 +132,8 @@ class FileEventHandler(FileSystemEventHandler):
             print("directory deleted:{0}".format(event.src_path))
         else:
             model_path = str(event.src_path)
+            if model_path in self.interface_manager.invalid_group:
+                self.interface_manager.invalid_group.pop(model_path)
             self.delete(model_path)
             self.logger.info(
                 "\n - Number of interfaces: {}"

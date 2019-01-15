@@ -30,11 +30,11 @@ def _image(_path, model_type=None, model_site=None, need_color=None):
 
 class Auth(object):
 
-    def __init__(self, host: str, server_type: ServerType, port=None):
+    def __init__(self, host: str, server_type: ServerType, access_key=None, secret_key=None, port=None):
         self._conf = Config(conf_path="config.yaml")
         self._url = 'http://{}:{}/captcha/auth/v2'.format(host, port if port else server_type)
-        self._access_key = self._conf.access_key
-        self._secret_key = self._conf.secret_key
+        self._access_key = access_key if access_key else self._conf.access_key
+        self._secret_key = secret_key if secret_key else self._conf.secret_key
         self.true_count = 0
         self.total_count = 0
 
@@ -90,14 +90,17 @@ class NoAuth(object):
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():
-            code = self.request(v).get('message')
-            _true = str(code).lower() == str(k).lower()
-            if _true:
-                self.true_count += 1
-            self.total_count += 1
-            print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
-                code, k, _true, self.true_count/self.total_count
-            ))
+            try:
+                code = self.request(v).get('message')
+                _true = str(code).lower() == str(k).lower()
+                if _true:
+                    self.true_count += 1
+                self.total_count += 1
+                print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
+                    code, k, _true, self.true_count/self.total_count
+                ))
+            except Exception as e:
+                print(e)
 
     def press_testing(self, image_list: dict, model_type=None, model_site=None):
         from multiprocessing.pool import ThreadPool
@@ -233,8 +236,8 @@ if __name__ == '__main__':
         if i < 1000
     }
     # print(batch)
-    # NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
-    NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
+    NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
+    # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     # GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)
     # GoogleRPC(DEFAULT_HOST).press_testing(batch, model_site=None, model_type=None)

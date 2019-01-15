@@ -32,10 +32,11 @@ class GraphSession(object):
                 ))
         )
         self.graph_def = self.graph.as_graph_def()
-        self.load_model()
         # if self.model_conf.color_engine == 'k-means':
         self.color_graph = tf.Graph()
         self.color_sess = tf.Session(graph=self.color_graph)
+        self.loaded = self.load_model()
+
         with self.color_graph.as_default():
             self.img_holder = tf.placeholder(dtype=tf.int32)
             self.black = tf.constant([[0, 0, 0]], dtype=tf.int32, name='black')
@@ -49,20 +50,23 @@ class GraphSession(object):
         # with self.graph.as_default():
         #     saver = tf.train.import_meta_graph('graph/***.meta')
         #     saver.restore(self.sess, tf.train.latest_checkpoint('graph'))
+        if not self.model_conf.model_exists:
+            self.destroy()
+            return False
         try:
             with tf.gfile.GFile(self.model_conf.compile_model_path, "rb") as f:
                 graph_def_file = f.read()
             self.graph_def.ParseFromString(graph_def_file)
+            with self.graph.as_default():
+                self.sess.run(tf.global_variables_initializer())
+                _ = tf.import_graph_def(self.graph_def, name="")
+
+            self.logger.info('TensorFlow Session {} Loaded.'.format(self.model_conf.target_model))
+            return True
         except NotFoundError:
             self.logger.error('The system cannot find the model specified.')
-            self.sess = None
-            return
-
-        with self.graph.as_default():
-            self.sess.run(tf.global_variables_initializer())
-            _ = tf.import_graph_def(self.graph_def, name="")
-
-        self.logger.info('TensorFlow Session {} Loaded.'.format(self.model_conf.target_model))
+            self.destroy()
+            return False
 
     def k_means(self, data, target_color, bg_color1, bg_color2, alpha=1.0):
         def get_distance(point):
@@ -135,4 +139,6 @@ class GraphSession(object):
 
     def destroy(self):
         self.sess.close()
+        self.color_sess.close()
         del self.sess
+        del self.color_sess
