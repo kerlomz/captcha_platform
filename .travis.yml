@@ -1,0 +1,14 @@
+language: python
+
+matrix:
+    include:
+      - os: linux
+        python: 3.6
+        env: TOXENV=py36
+      - os: osx
+        python: 3.6
+        env: TOXENV=py36
+      - os: windows
+        python: 3.6
+        env: TOXENV=py36
+
