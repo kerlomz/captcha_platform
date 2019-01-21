@@ -7,6 +7,4 @@ install:
   - pip install -r requirements.txt
 
 script:
-  python flask_server.py
-  python grpc_server.py
-  python tornado_server.py
+  python test.py
