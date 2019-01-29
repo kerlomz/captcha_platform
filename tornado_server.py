@@ -103,14 +103,14 @@ class NoAuthHandler(BaseHandler):
         if not image_batch:
             logger.error('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
                 self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, response,
-                round((time.time() - start_time) * 1000), 2)
+                round((time.time() - start_time) * 1000))
             )
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, split_char)
         logger.info('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, result,
-            round((time.time() - start_time) * 1000), 2)
+            round((time.time() - start_time) * 1000))
         )
         response['message'] = result
         return self.write(json_encode(response))
