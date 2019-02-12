@@ -41,7 +41,8 @@ class Config(object):
             '{}/{}.log'.format(self.log_path, "captcha_platform"),
             when="MIDNIGHT",
             interval=1,
-            backupCount=180
+            backupCount=180,
+            encoding='utf-8'
         )
         self.logger.propagate = False
         stream_handler = logging.StreamHandler()

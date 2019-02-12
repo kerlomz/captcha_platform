@@ -1,3 +1,6 @@
+<a href="https://github.com/kerlomz/captcha_platform/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+[![Build Status](https://travis-ci.org/kerlomz/captcha_platform.svg?branch=master)](https://travis-ci.org/kerlomz/captcha_platform)
+
 # Project Introduction
 This project is based on CNN+BLSTM+CTC to realize verification code identification. 
 This project is only for deployment models, If you need to train the model, please move to https://github.com/kerlomz/captcha_trainer
