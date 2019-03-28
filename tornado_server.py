@@ -14,9 +14,9 @@ from tornado.web import RequestHandler
 from constants import Response, color_map
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
-from interface import InterfaceManager
+from interface import InterfaceManager, Interface
 from config import Config
-from utils import ImageUtils, ParamUtils
+from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from watchdog.observers import Observer
 from event_handler import FileEventHandler
@@ -60,12 +60,17 @@ class BaseHandler(RequestHandler):
 class NoAuthHandler(BaseHandler):
 
     @run_on_executor
-    def predict(self, interface, image_batch, split_char, size_string, model_type, model_site, start_time):
+    def predict(self, interface: Interface, image_batch, split_char, size_string, model_type, model_site, start_time):
         result = interface.predict_batch(image_batch, split_char)
+        if interface.model_charset == 'ARITHMETIC':
+            if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
+                result = result.replace("×", "*").replace("÷", "/")
+                result = str(int(Arithmetic.calc(result)))
         logger.info('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, result,
             round((time.time() - start_time) * 1000))
         )
+
         return result
 
     @tornado.gen.coroutine
@@ -222,7 +227,7 @@ def event_loop():
 if __name__ == "__main__":
 
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
+    parser.add_option('-p', '--port', type="int", default=19982, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
     parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")

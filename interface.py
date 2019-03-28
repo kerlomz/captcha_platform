@@ -19,6 +19,7 @@ class Interface(object):
         self.model_type = self.graph_sess.model_type
         self.model_site = self.graph_sess.model_site
         self.version = self.graph_sess.version
+        self.model_charset = self.model_conf.charset
         if self.graph_sess.loaded:
             self.sess = self.graph_sess.session
             self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")

@@ -2,9 +2,11 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import io
+import re
 import cv2
 import time
 import base64
+import functools
 import binascii
 import datetime
 import hashlib
@@ -15,6 +17,93 @@ from constants import Response, Config
 from pretreatment import preprocessing
 from config import ModelConfig
 
+
+class Arithmetic(object):
+
+    @staticmethod
+    def minus_operator_handler(formula):
+        minus_operators = re.split("-", formula)
+        calc_list = re.findall("[0-9]", formula)
+        if minus_operators[0] == '':  # 第一值肯定是负号
+            calc_list[0] = '-%s' % calc_list[0]
+        res = functools.reduce(lambda x, y: float(x) - float(y), calc_list)
+        return res
+
+    @staticmethod
+    def remove_duplicates(formula):
+        formula = formula.replace("++", "+")
+        formula = formula.replace("+-", "-")
+        formula = formula.replace("-+", "-")
+        formula = formula.replace("--", "+")
+        formula = formula.replace("- -", "+")
+        return formula
+
+    @staticmethod
+    def compute_multiply_and_dividend(formula):
+        operators = re.findall("[*/]", formula)
+        calc_list = re.split("[*/]", formula)
+        res = None
+        for index, i in enumerate(calc_list):
+            if res:
+                if operators[index - 1] == "*":
+                    res *= float(i)
+                elif operators[index - 1] == "/":
+                    res /= float(i)
+            else:
+                res = float(i)
+        return res
+
+    @staticmethod
+    def handle_special_occasions(plus_and_minus_operators, multiply_and_dividend):
+        for index, i in enumerate(multiply_and_dividend):
+            i = i.strip()
+            if i.endswith("*") or i.endswith("/"):
+                multiply_and_dividend[index] = multiply_and_dividend[index] + plus_and_minus_operators[index] + \
+                                               multiply_and_dividend[index + 1]
+                del multiply_and_dividend[index + 1]
+                del plus_and_minus_operators[index]
+        return plus_and_minus_operators, multiply_and_dividend
+
+    @staticmethod
+    def compute(formula):
+        formula = formula.strip("()")
+        formula = Arithmetic.remove_duplicates(formula)
+        plus_and_minus_operators = re.findall("[+-]", formula)
+        multiply_and_dividend = re.split("[+-]", formula)
+        if len(multiply_and_dividend[0].strip()) == 0:
+            multiply_and_dividend[1] = plus_and_minus_operators[0] + multiply_and_dividend[1]
+            del multiply_and_dividend[0]
+            del plus_and_minus_operators[0]
+
+        plus_and_minus_operators, multiply_and_dividend = Arithmetic.handle_special_occasions(
+            plus_and_minus_operators, multiply_and_dividend
+        )
+        for index, i in enumerate(multiply_and_dividend):
+            if re.search("[*/]", i):
+                sub_res = Arithmetic.compute_multiply_and_dividend(i)
+                multiply_and_dividend[index] = sub_res
+
+        total_res = None
+        for index, item in enumerate(multiply_and_dividend):
+            if total_res:
+                if plus_and_minus_operators[index - 1] == '+':
+                    total_res += float(item)
+                elif plus_and_minus_operators[index - 1] == '-':
+                    total_res -= float(item)
+            else:
+                total_res = float(item)
+        return total_res
+
+    @staticmethod
+    def calc(formula):
+        parenthesise_flag = True
+        while parenthesise_flag:
+            m = re.search("\([^()]*\)", formula)
+            if m:
+                sub_res = Arithmetic.compute(m.group())
+                formula = formula.replace(m.group(), str(sub_res))
+            else:
+                return Arithmetic.compute(formula)
 
 class ParamUtils(object):
 
