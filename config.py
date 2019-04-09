@@ -73,7 +73,7 @@ class Config(object):
     def read_conf(self):
         with open(self.conf_path, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
-            return yaml.load(sys_stream)
+            return yaml.load(sys_stream, Loader=yaml.SafeLoader)
 
 
 class Model(object):
@@ -117,7 +117,7 @@ class Model(object):
     def read_conf(self):
         with open(self.model_conf, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
-            return yaml.load(sys_stream)
+            return yaml.load(sys_stream, Loader=yaml.SafeLoader)
 
 
 class ModelConfig(Model):

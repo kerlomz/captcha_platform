@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
-import io
 import cv2
 import numpy as np
-import PIL.Image
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import NotFoundError
 from config import ModelConfig
@@ -32,18 +30,29 @@ class GraphSession(object):
                 ))
         )
         self.graph_def = self.graph.as_graph_def()
-        # if self.model_conf.color_engine == 'k-means':
-        self.color_graph = tf.Graph()
-        self.color_sess = tf.Session(graph=self.color_graph)
+        self.hsv_map = {
+            "blue": {
+                "lower_hsv": np.array([100, 128, 46]),
+                "high_hsv": np.array([124, 255, 255])
+            },
+            "red": {
+                "lower_hsv": np.array([0, 128, 46]),
+                "high_hsv": np.array([5, 255, 255])
+            },
+            "yellow": {
+                "lower_hsv": np.array([15, 128, 46]),
+                "high_hsv": np.array([34, 255, 255])
+            },
+            "green": {
+                "lower_hsv": np.array([35, 128, 46]),
+                "high_hsv": np.array([77, 255, 255])
+            },
+            "black": {
+                "lower_hsv": np.array([0, 0, 0]),
+                "high_hsv": np.array([180, 255, 46])
+            }
+        }
         self.loaded = self.load_model()
-
-        with self.color_graph.as_default():
-            self.img_holder = tf.placeholder(dtype=tf.int32)
-            self.black = tf.constant([[0, 0, 0]], dtype=tf.int32, name='black')
-            self.red = tf.constant([[0, 0, 255]], dtype=tf.int32, name='red')
-            self.yellow = tf.constant([[0, 255, 255]], dtype=tf.int32, name='yellow')
-            self.blue = tf.constant([[255, 0, 0]], dtype=tf.int32, name='blue')
-            self.green = tf.constant([[0, 255, 0]], dtype=tf.int32, name='green')
 
     def load_model(self):
         # Here is for debugging, positioning error source use.
@@ -68,70 +77,15 @@ class GraphSession(object):
             self.destroy()
             return False
 
-    def k_means(self, data, target_color, bg_color1, bg_color2, alpha=1.0):
-        def get_distance(point):
-            sum_squares = tf.cast(
-                tf.reduce_sum(
-                    tf.abs(tf.subtract(data, point)),
-                    axis=2,
-                    keepdims=True
-                ),
-                tf.float32)
-            return sum_squares
-
-        with self.color_graph.as_default():
-            alpha_value = tf.constant(alpha, dtype=tf.float32)
-            black_distance = get_distance(self.black)
-            red_distance = get_distance(self.red)
-            if target_color == 1:
-                red_distance = tf.multiply(red_distance, alpha_value)
-            blue_distance = get_distance(self.blue)
-            if target_color == 2:
-                blue_distance = tf.multiply(blue_distance, alpha_value)
-            yellow_distance = get_distance(self.yellow)
-            if target_color == 3:
-                yellow_distance = tf.multiply(yellow_distance, alpha_value)
-
-            green_distance = get_distance(self.green)
-            c_1_distance = get_distance(bg_color1)
-            c_2_distance = get_distance(bg_color2)
-
-            distances = tf.concat(
-                [black_distance, red_distance, blue_distance, yellow_distance, green_distance, c_1_distance,
-                 c_2_distance], axis=-1)
-
-            clusters = tf.cast(tf.argmin(distances, axis=-1), tf.int32)
-
-            mask = tf.equal(clusters, target_color)
-            mask = tf.cast(mask, tf.int32)
-            return mask * 255
-
-    def filter_img(self, img, target_color, alpha=0.9):
-        with self.color_graph.as_default():
-            # background color1
-            color_1 = img[0, 0, :]
-            color_1 = tf.reshape(color_1, [1, 3])
-            color_1 = tf.cast(color_1, dtype=tf.int32)
-
-            # background color2
-            color_2 = img[34, 6, :]
-            color_2 = tf.reshape(color_2, [1, 3])
-            color_2 = tf.cast(color_2, dtype=tf.int32)
-
-            filtered_img = self.k_means(self.img_holder, target_color, color_1, color_2, alpha)
-            filtered_img = tf.expand_dims(filtered_img, axis=0)
-            filtered_img = tf.expand_dims(filtered_img, axis=-1)
-            filtered_img = tf.squeeze(filtered_img)
-            return filtered_img
-
     def separate_color(self, image_bytes, color):
         image = np.asarray(bytearray(image_bytes), dtype="uint8")
         image = cv2.imdecode(image, -1)
-        rgb = cv2.split(image)
-        image = cv2.merge(rgb[:3])
-        filtered = self.filter_img(self.img_holder, target_color=color, alpha=0.8)
-        result = self.color_sess.run(filtered, {self.img_holder: image})
-        return bytearray(cv2.imencode('.png', result)[1])
+        hsv = cv2.cvtColor(np.asarray(image), cv2.COLOR_BGR2HSV)
+        lower_hsv = self.hsv_map[color]['lower_hsv']
+        high_hsv = self.hsv_map[color]['high_hsv']
+        mask = cv2.inRange(hsv, lowerb=lower_hsv, upperb=high_hsv)
+        mask = bytearray(cv2.imencode('.png', mask)[1])
+        return mask
 
     @property
     def session(self):
@@ -139,6 +93,4 @@ class GraphSession(object):
 
     def destroy(self):
         self.sess.close()
-        self.color_sess.close()
         del self.sess
-        del self.color_sess

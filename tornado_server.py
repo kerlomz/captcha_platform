@@ -227,7 +227,7 @@ def event_loop():
 if __name__ == "__main__":
 
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19982, dest="port")
+    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
     parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")

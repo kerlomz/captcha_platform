@@ -8,11 +8,11 @@ class Config:
 
 
 class Color:
-    Black = 0
-    Red = 1
-    Blue = 2
-    Yellow = 3
-    Green = 4
+    Black = 'black'
+    Red = 'red'
+    Blue = 'blue'
+    Yellow = 'yellow'
+    Green = 'green'
 
 
 color_map = {
