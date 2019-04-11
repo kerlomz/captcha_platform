@@ -136,6 +136,7 @@ class ModelConfig(Model):
         self.model_type = None
         self.image_height = None
         self.image_width = None
+        self.image_channel = None
         self.resize = None
         self.binaryzation = None
         self.smooth = None
@@ -183,9 +184,8 @@ class ModelConfig(Model):
 
         self.image_height = self.cf_model['Model'].get('ImageHeight')
         self.image_width = self.cf_model['Model'].get('ImageWidth')
-        self.color_engine = self.cf_model['Model'].get('ColorEngine')
-        self.color_engine = self.color_engine if self.color_engine else 'opencv'
-
+        self.image_channel = self.cf_model['Model'].get('ImageChannel')
+        self.image_channel = self.image_channel if self.image_channel else 1
         self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
         self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
         self.blur = self.cf_model['Pretreatment'].get('Blur')

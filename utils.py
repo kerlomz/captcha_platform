@@ -178,13 +178,15 @@ class ImageUtils(object):
                 background = PIL_Image.new('RGB', pil_image.size, (255, 255, 255))
                 background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
                 pil_image = background
-            pil_image = pil_image.convert('L')
+
+            if model.image_channel == 1:
+                pil_image = pil_image.convert('L')
 
             # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
             image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(np.float32)
             image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
-            return image[:, :, np.newaxis] / 255.
+            return image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :] / 255.
 
         try:
             image_batch = [load_image(i) for i in bytes_batch]
