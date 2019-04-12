@@ -187,7 +187,7 @@ class ImageUtils(object):
                 np.float32)
             image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
-            return image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :] / 255.
+            return (image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :]) / 255.
 
         try:
             image_batch = [load_image(i) for i in bytes_batch]
