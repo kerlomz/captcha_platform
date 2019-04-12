@@ -11,7 +11,6 @@ import binascii
 import datetime
 import hashlib
 import numpy as np
-import tensorflow as tf
 from PIL import Image as PIL_Image
 from constants import Response, Config
 from pretreatment import preprocessing
@@ -105,6 +104,7 @@ class Arithmetic(object):
             else:
                 return Arithmetic.compute(formula)
 
+
 class ParamUtils(object):
 
     @staticmethod
@@ -183,7 +183,8 @@ class ImageUtils(object):
                 pil_image = pil_image.convert('L')
 
             # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-            image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(np.float32)
+            image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(
+                np.float32)
             image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
             return image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :] / 255.
