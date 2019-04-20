@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
-import cv2
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import NotFoundError
 from config import ModelConfig
@@ -30,28 +28,6 @@ class GraphSession(object):
                 ))
         )
         self.graph_def = self.graph.as_graph_def()
-        self.hsv_map = {
-            "blue": {
-                "lower_hsv": np.array([100, 128, 46]),
-                "high_hsv": np.array([124, 255, 255])
-            },
-            "red": {
-                "lower_hsv": np.array([0, 128, 46]),
-                "high_hsv": np.array([5, 255, 255])
-            },
-            "yellow": {
-                "lower_hsv": np.array([15, 128, 46]),
-                "high_hsv": np.array([34, 255, 255])
-            },
-            "green": {
-                "lower_hsv": np.array([35, 128, 46]),
-                "high_hsv": np.array([77, 255, 255])
-            },
-            "black": {
-                "lower_hsv": np.array([0, 0, 0]),
-                "high_hsv": np.array([180, 255, 46])
-            }
-        }
         self.loaded = self.load_model()
 
     def load_model(self):
@@ -76,16 +52,6 @@ class GraphSession(object):
             self.logger.error('The system cannot find the model specified.')
             self.destroy()
             return False
-
-    def separate_color(self, image_bytes, color):
-        image = np.asarray(bytearray(image_bytes), dtype="uint8")
-        image = cv2.imdecode(image, -1)
-        hsv = cv2.cvtColor(np.asarray(image), cv2.COLOR_BGR2HSV)
-        lower_hsv = self.hsv_map[color]['lower_hsv']
-        high_hsv = self.hsv_map[color]['high_hsv']
-        mask = cv2.inRange(hsv, lowerb=lower_hsv, upperb=high_hsv)
-        mask = bytearray(cv2.imencode('.png', mask)[1])
-        return mask
 
     @property
     def session(self):

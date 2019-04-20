@@ -5,18 +5,30 @@ import time
 import optparse
 import threading
 from config import Config
-from constants import color_map
 from utils import ImageUtils
 from interface import InterfaceManager
 from watchdog.observers import Observer
 from event_handler import FileEventHandler
 from sanic import Sanic
 from sanic.response import json
+from signature import Signature, ServerType
+from middleware import *
 
 app = Sanic()
+sign = Signature(ServerType.SANIC)
+
+
+@app.route('/captcha/auth/v2', methods=['POST'])
+@sign.signature_required  # This decorator is required for certification.
+def auth_request(request):
+    return common_request(request)
 
 
 @app.route('/captcha/v1', methods=['POST'])
+def no_auth_request(request):
+    return common_request(request)
+
+
 def common_request(request):
     """
     This api is used for captcha prediction without authentication
@@ -24,6 +36,7 @@ def common_request(request):
     """
     start_time = time.time()
     if not request.json or 'image' not in request.json:
+        print(request.json)
         return
 
     if interface_manager.total == 0:
@@ -55,7 +68,7 @@ def common_request(request):
     split_char = request.json['split_char'] if 'split_char' in request.json else interface.model_conf.split_char
 
     if 'need_color' in request.json and request.json['need_color']:
-        bytes_batch = [interface.separate_color(_, color_map[request.json['need_color']]) for _ in bytes_batch]
+        bytes_batch = [color_extract.separate_color(_, color_map[request.json['need_color']]) for _ in bytes_batch]
 
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
@@ -105,6 +118,7 @@ if __name__ == "__main__":
     graph_path = opt.graph_path
 
     system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+    sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
     logger = system_config.logger
     interface_manager = InterfaceManager()
     threading.Thread(target=event_loop).start()

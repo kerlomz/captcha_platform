@@ -82,7 +82,7 @@ class Signature(object):
         except Exception:
             raise InvalidUsage(**self._except.UNKNOWN_SERVER_ERROR)
         else:
-            if self.type == ServerType.FLASK:
+            if self.type == ServerType.FLASK or self.type == ServerType.SANIC:
                 from flask.app import HTTPException, json
                 # NO.1 Check the timestamp
                 if not self._check_req_timestamp(req_timestamp):
@@ -119,6 +119,8 @@ class Signature(object):
             elif self.type == ServerType.TORNADO:
                 from tornado.escape import json_decode
                 params = json_decode(args[0].request.body)
+            elif self.type == ServerType.SANIC:
+                params = args[0].json
             else:
                 raise UserWarning('Illegal type, the current version is not supported at this time.')
             result = self._verification(params, args[0] if self.type == ServerType.TORNADO else None)

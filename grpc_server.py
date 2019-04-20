@@ -13,9 +13,9 @@ import optparse
 from utils import ImageUtils
 from interface import InterfaceManager
 from config import Config
-from constants import color_map
 from event_handler import FileEventHandler
 from watchdog.observers import Observer
+from middleware import *
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -49,7 +49,7 @@ class Predict(grpc_pb2_grpc.PredictServicer):
             return {"result": "", "success": False, "code": 999}
 
         if request.need_color:
-            bytes_batch = [interface.separate_color(_, color_map[request.need_color]) for _ in bytes_batch]
+            bytes_batch = [color_extract.separate_color(_, color_map[request.need_color]) for _ in bytes_batch]
 
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 

@@ -119,7 +119,7 @@ class GoogleRPC(object):
         self.true_count = 0
         self.total_count = 0
 
-    def request(self, image, println=False, value=None, model_type=None, model_site=None):
+    def request(self, image, println=False, value=None, model_type=None, model_site=None, need_color=None):
 
         import grpc
         import grpc_pb2
@@ -127,7 +127,7 @@ class GoogleRPC(object):
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.PredictStub(channel)
         response = stub.predict(grpc_pb2.PredictRequest(
-            image=image, split_char=',', model_type=model_type, model_site=model_site
+            image=image, split_char=',', model_type=model_type, model_site=model_site, need_color=need_color
         ))
         if println and value:
             _true = str(response.result).lower() == str(value).lower()
@@ -138,7 +138,7 @@ class GoogleRPC(object):
 
     def local_iter(self, image_list: dict, model_type=None, model_site=None):
         for k, v in image_list.items():
-            code = self.request(v.get('image'), model_type=model_type, model_site=model_site).get('message')
+            code = self.request(v.get('image'), model_type=model_type, model_site=model_site, need_color=v.get('need_color')).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1

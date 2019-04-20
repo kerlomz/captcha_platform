@@ -9,9 +9,8 @@ import tornado.ioloop
 import tornado.log
 import tornado.gen
 import tornado.httpserver
-import tensorflow as tf
 from tornado.web import RequestHandler
-from constants import Response, color_map
+from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
@@ -22,9 +21,9 @@ from watchdog.observers import Observer
 from event_handler import FileEventHandler
 from tornado.concurrent import run_on_executor
 from concurrent.futures import ThreadPoolExecutor
+from middleware import *
 
 sign = Signature(ServerType.TORNADO)
-color_session = tf.Session()
 
 
 class BaseHandler(RequestHandler):
@@ -115,7 +114,7 @@ class NoAuthHandler(BaseHandler):
         split_char = split_char if 'split_char' in data else interface.model_conf.split_char
 
         if need_color:
-            bytes_batch = [interface.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+            bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
