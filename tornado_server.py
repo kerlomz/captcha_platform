@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from middleware import *
 
 sign = Signature(ServerType.TORNADO)
+arithmetic = Arithmetic()
 
 
 class BaseHandler(RequestHandler):
@@ -64,7 +65,7 @@ class NoAuthHandler(BaseHandler):
         if interface.model_charset == 'ARITHMETIC':
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
-                result = str(int(Arithmetic.calc(result)))
+                result = str(int(arithmetic.calc(result)))
         logger.info('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, result,
             round((time.time() - start_time) * 1000))
