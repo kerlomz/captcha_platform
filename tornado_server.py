@@ -126,7 +126,7 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
         response['message'] = yield self.predict(interface, image_batch, split_char, size_string, model_type, model_site, start_time)
-        return self.write(json_encode(response))
+        return self.finish(json_encode(response))
 
 
 class AuthHandler(NoAuthHandler):
