@@ -16,6 +16,7 @@ class TargetColor(Enum):
     Blue = 2
     Yellow = 3
     Green = 4
+    White = 7
 
 
 color_map = {
@@ -23,7 +24,8 @@ color_map = {
     'red': TargetColor.Red,
     'blue': TargetColor.Blue,
     'yellow': TargetColor.Yellow,
-    'green': TargetColor.Green
+    'green': TargetColor.Green,
+    'white': TargetColor.White
 }
 
 
