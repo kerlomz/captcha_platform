@@ -127,8 +127,8 @@ class ImageUtils(object):
             image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(
                 np.float32)
             if model.resize[0] == -1:
-                ratio = model.resize[1] / model.image_height
-                resize_width = int(ratio * model.image_width)
+                ratio = model.resize[1] / size[1]
+                resize_width = int(ratio * size[0])
                 image = cv2.resize(image, (resize_width, model.resize[1]))
             else:
                 image = cv2.resize(image, (model.resize[0], model.resize[1]))
