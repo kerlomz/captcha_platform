@@ -126,7 +126,12 @@ class ImageUtils(object):
             # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
             image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(
                 np.float32)
-            image = cv2.resize(image, (model.resize[0], model.resize[1]))
+            if model.resize[0] == -1:
+                ratio = model.resize[1] / model.image_height
+                resize_width = int(ratio * model.image_width)
+                image = cv2.resize(image, (resize_width, model.resize[1]))
+            else:
+                image = cv2.resize(image, (model.resize[0], model.resize[1]))
             image = image.swapaxes(0, 1)
             return (image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :]) / 255.
 
