@@ -1,0 +1,8 @@
+# .dockerignore 文件中指定在传递给 docker引擎 时需要忽略掉的文件或文件夹。
+
+.git/
+.idea/
+patchca_ubuntu/
+__pycache__/
+.DS_Store
+venv/
