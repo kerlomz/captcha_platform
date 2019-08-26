@@ -3,8 +3,38 @@
 # - This parameter is used to stitch multiple binary images so that
 # - you can pass a batch of images at a time and return the predicted result.
 System:
-  DefaultModel: cy_9325
+  DefaultModel: ''
   SplitFlag: b'\x00\xff\xff\xff\x00'
+
+RouteMap:
+  -
+    Class: AuthHandler
+    Route: /captcha/auth/v2
+  -
+    Class: NoAuthHandler
+    Route: /captcha/v11
+  -
+    Class: SimpleHandler
+    Route: /captcha/v3
+  -
+    Class: HeartBeatHandler
+    Route: /check_backend_active.html
+  -
+    Class: HeartBeatHandler
+    Route: /verification
+  -
+    Class: HeartBeatHandler
+    Route: /
+  -
+    Class: ServiceHandler
+    Route: /service/info
+  -
+    Class: FileHandler
+    Route: /service/logs/(.*)
+    Param: {"path": "logs"}
+  -
+    Class: BaseHandler
+    Route: .*
 
 Security:
   AccessKey: ''

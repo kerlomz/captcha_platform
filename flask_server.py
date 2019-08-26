@@ -28,7 +28,9 @@ conf_path = 'config.yaml'
 model_path = 'model'
 graph_path = 'graph'
 
+
 system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+route_map = {i['Class']: i['Route'] for i in system_config.route_map}
 sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 logger = system_config.logger
 interface_manager = InterfaceManager()
@@ -64,13 +66,13 @@ def permission_denied(error=None):
     return jsonify(message=message, code=error.code, success=False)
 
 
-@app.route('/captcha/auth/v2', methods=['POST'])
+@app.route(route_map['AuthHandler'], methods=['POST'])
 @sign.signature_required  # This decorator is required for certification.
 def auth_request():
     return common_request()
 
 
-@app.route('/captcha/v1', methods=['POST'])
+@app.route(route_map['NoAuthHandler'], methods=['POST'])
 def no_auth_request():
     return common_request()
 

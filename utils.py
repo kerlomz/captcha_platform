@@ -3,6 +3,7 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import io
 import re
+import os
 import cv2
 import time
 import base64
@@ -11,10 +12,12 @@ import binascii
 import datetime
 import hashlib
 import numpy as np
+import tensorflow as tf
 from PIL import Image as PIL_Image
-from constants import Response, Config
+from constants import Response, SystemConfig
 from pretreatment import preprocessing
 from config import ModelConfig
+from paramiko import SFTPClient
 
 
 class Arithmetic(object):
@@ -94,7 +97,7 @@ class ImageUtils(object):
                 if not bytes_batch:
                     bytes_batch = [base64.b64decode(i) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
-                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(Config.split_flag)
+                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(SystemConfig.split_flag)
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]
@@ -132,6 +135,15 @@ class ImageUtils(object):
                 image = cv2.resize(image, (resize_width, model.resize[1]))
             else:
                 image = cv2.resize(image, (model.resize[0], model.resize[1]))
+            if model.padding:
+                image = tf.keras.preprocessing.sequence.pad_sequences(
+                    sequences=image,
+                    maxlen=model.padding if model.lower_padding and model.resize[0] < model.lower_padding else None,
+                    dtype='float32',
+                    padding='post',
+                    truncating='post',
+                    value=0
+                )
             image = image.swapaxes(0, 1)
             return (image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :]) / 255.
 
@@ -200,3 +212,38 @@ class ImageUtils(object):
         if h[:len(s)] == s:
             return 'xbm'
         return None
+
+
+class SystemUtils(object):
+
+    @staticmethod
+    def datetime(origin=None, microseconds=None):
+        now = origin if origin else time.time()
+        if microseconds:
+            return (
+                    datetime.datetime.fromtimestamp(now) + datetime.timedelta(microseconds=microseconds)
+            ).strftime('%Y-%m-%d %H:%M:%S.%f')
+        return datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S.%f')
+
+    @staticmethod
+    def isdir(sftp, path):
+        from stat import S_ISDIR
+        try:
+            return S_ISDIR(sftp.stat(path).st_mode)
+        except IOError:
+            return False
+
+    @staticmethod
+    def empty(sftp: SFTPClient, path):
+
+        if not SystemUtils.isdir(sftp, path):
+            sftp.mkdir(path)
+
+        files = sftp.listdir(path=path)
+
+        for f in files:
+            file_path = os.path.join(path, f)
+            if SystemUtils.isdir(sftp, file_path):
+                SystemUtils.empty(sftp, file_path)
+            else:
+                sftp.remove(file_path)

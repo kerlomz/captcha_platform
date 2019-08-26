@@ -7,17 +7,29 @@ import base64
 import datetime
 import hashlib
 import time
+import numpy as np
+import cv2
 from config import Config
 from requests import Session, post, get
 from PIL import Image as PilImage
 from constants import ServerType
 
-DEFAULT_HOST = "localhost"
+# DEFAULT_HOST = "63.211.111.82"
+# DEFAULT_HOST = "39.100.71.103"
+# DEFAULT_HOST = "120.79.233.49"
+# DEFAULT_HOST = "47.52.203.228"
+DEFAULT_HOST = "192.168.50.152"
 
 
 def _image(_path, model_type=None, model_site=None, need_color=None):
     with open(_path, "rb") as f:
         img_bytes = f.read()
+        data_stream = io.BytesIO(img_bytes)
+        pil_image = PilImage.open(data_stream)
+        # size = pil_image.size
+        im = np.array(pil_image)
+        # im = im[3:size[1] - 3, 3:size[0] - 3]
+        img_bytes = bytearray(cv2.imencode('.png', im)[1])
 
     b64 = base64.b64encode(img_bytes).decode()
     return {
@@ -76,7 +88,8 @@ class Auth(object):
             if _true:
                 self.true_count += 1
             self.total_count += 1
-            print('result: {}, label: {}, flag: n{}, acc_rate: {}'.format(code, k, _true, self.true_count/self.total_count))
+            print('result: {}, label: {}, flag: n{}, acc_rate: {}'.format(code, k, _true,
+                                                                          self.true_count / self.total_count))
 
 
 class NoAuth(object):
@@ -86,6 +99,8 @@ class NoAuth(object):
         self.total_count = 0
 
     def request(self, params):
+        import json
+        print(json.dumps(params))
         return post(self._url, json=params).json()
 
     def local_iter(self, image_list: dict):
@@ -97,7 +112,7 @@ class NoAuth(object):
                     self.true_count += 1
                 self.total_count += 1
                 print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
-                    code, k, _true, self.true_count/self.total_count
+                    code, k, _true, self.true_count / self.total_count
                 ))
             except Exception as e:
                 print(e)
@@ -106,10 +121,11 @@ class NoAuth(object):
         from multiprocessing.pool import ThreadPool
         pool = ThreadPool(500)
         for k, v in image_list.items():
-            pool.apply_async(self.request({"image": v.get('image'), "model_type": model_type, "model_site": model_site}))
+            pool.apply_async(
+                self.request({"image": v.get('image'), "model_type": model_type, "model_site": model_site}))
         pool.close()
         pool.join()
-        print(self.true_count/len(image_list))
+        print(self.true_count / len(image_list))
 
 
 class GoogleRPC(object):
@@ -138,16 +154,17 @@ class GoogleRPC(object):
 
     def local_iter(self, image_list: dict, model_type=None, model_site=None):
         for k, v in image_list.items():
-            code = self.request(v.get('image'), model_type=model_type, model_site=model_site, need_color=v.get('need_color')).get('message')
+            code = self.request(v.get('image'), model_type=model_type, model_site=model_site,
+                                need_color=v.get('need_color')).get('message')
             _true = str(code).lower() == str(k).lower()
             if _true:
                 self.true_count += 1
             self.total_count += 1
             print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
-                code, k, _true, self.true_count/self.total_count
+                code, k, _true, self.true_count / self.total_count
             ))
 
-    def remote_iter(self, url: str, save_path: str=None, num=100, model_type=None, model_site=None):
+    def remote_iter(self, url: str, save_path: str = None, num=100, model_type=None, model_site=None):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         sess = Session()
@@ -170,11 +187,10 @@ class GoogleRPC(object):
             pool.apply_async(self.request(v.get('image'), True, k, model_type=model_type, model_site=model_site))
         pool.close()
         pool.join()
-        print(self.true_count/len(image_list))
+        print(self.true_count / len(image_list))
 
 
 if __name__ == '__main__':
-
     # # Here you can replace it with a web request to get images in real time.
     # with open(r"D:\***.jpg", "rb") as f:
     #     img_bytes = f.read()
@@ -197,33 +213,36 @@ if __name__ == '__main__':
     # }
     # print(api_params)
     # for i in range(1):
-        # Tornado API with authentication
-        # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        # print(resp)
+    # Tornado API with authentication
+    # resp = Auth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+    # print(resp)
 
-        # Flask API with authentication
-        # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        # print(resp)
+    # Flask API with authentication
+    # resp = Auth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+    # print(resp)
 
-        # Tornado API without authentication
-        # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
-        # print(resp)
+    # Tornado API without authentication
+    # resp = NoAuth(DEFAULT_HOST, ServerType.TORNADO).request(api_params)
+    # print(resp)
 
-        # Flask API without authentication
-        # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
-        # print(resp)
+    # Flask API without authentication
+    # resp = NoAuth(DEFAULT_HOST, ServerType.FLASK).request(api_params)
+    # print(resp)
 
-        # API by gRPC - The fastest way.
-        # If you want to identify multiple verification codes continuously, please do like this:
-        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes+b'\x00\xff\xff\xff\x00'+img_bytes).decode())
-        # b'\x00\xff\xff\xff\x00' is the split_flag defined in config.py
-        # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
-        # print(resp)
-        # pass
+    # API by gRPC - The fastest way.
+    # If you want to identify multiple verification codes continuously, please do like this:
+    # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes+b'\x00\xff\xff\xff\x00'+img_bytes).decode())
+    # b'\x00\xff\xff\xff\x00' is the split_flag defined in config.py
+    # resp = GoogleRPC(DEFAULT_HOST).request(base64.b64encode(img_bytes).decode())
+    # print(resp)
+    # pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    path = r"F:\TransSet\kap-1"
+    path = r"/mnt/c/Users/kerlomz/Desktop/Newfolder"
     path_list = os.listdir(path)
+    import random
+
+    # random.shuffle(path_list)
     print(path_list)
     batch = {
         _path.split('_')[0].lower(): _image(
@@ -233,12 +252,12 @@ if __name__ == '__main__':
             need_color=None,
         )
         for i, _path in enumerate(path_list)
-        if i < 1000
+        if i < 10000
     }
-    # print(batch)
-    NoAuth(DEFAULT_HOST, ServerType.TORNADO).local_iter(batch)
+    print(batch)
+    NoAuth(DEFAULT_HOST, ServerType.TORNADO, port=19952).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     # GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)
     # GoogleRPC(DEFAULT_HOST).press_testing(batch, model_site=None, model_type=None)
-    # GoogleRPC(DEFAULT_HOST).remote_iter("http://www.***.com/captcha", "D:\****", 100, model_site=None, model_type=None)
+    # GoogleRPC(DEFAULT_HOST).remote_iter("https://pbank.cqrcb.com:9080/perbank/VerifyImage?update=0.8746844661116633", r"D:\test12", 100, model_site='80x24', model_type=None)

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import os
 import time
 import json
+import numpy.core.multiarray
+import numpy.core._dtype_ctypes
 import optparse
 import threading
 import tornado.ioloop
@@ -42,6 +45,8 @@ class BaseHandler(RequestHandler):
             data = json_decode(self.request.body)
         except JSONDecodeError:
             data = self.request.body_arguments
+        except UnicodeDecodeError:
+            raise tornado.web.HTTPError(401)
         if not data:
             raise tornado.web.HTTPError(400)
         return data
@@ -126,7 +131,7 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
         response['message'] = yield self.predict(interface, image_batch, split_char, size_string, model_type, model_site, start_time)
-        return self.finish(json_encode(response))
+        return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
 class AuthHandler(NoAuthHandler):
@@ -166,18 +171,19 @@ class SimpleHandler(BaseHandler):
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
-            logger.error('[{}] - Size[{}] - Response[{}] - {} ms'.format(
-                interface.name, size_string, response,
+            logger.error('[{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
+
+                self.request.remote_ip, interface.name, size_string, response,
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, None)
-        logger.info('[{}] - Size[{}] - Predict[{}] - {} ms'.format(
-            interface.name, size_string, result, (time.time() - start_time) * 1000)
+        logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
+            self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
         response['message'] = result
-        return self.write(json_encode(response))
+        return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
 class ServiceHandler(BaseHandler):
@@ -200,14 +206,17 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("Cache-control", "no-cache")
 
 
-def make_app():
+class HeartBeatHandler(BaseHandler):
+
+    def get(self):
+        self.finish("")
+
+
+def make_app(route: list):
     return tornado.web.Application([
-        (r"/captcha/auth/v2", AuthHandler),
-        (r"/captcha/v1", NoAuthHandler),
-        (r"/captcha/v3", SimpleHandler),
-        (r"/service/info", ServiceHandler),
-        (r"/service/logs/(.*)", FileHandler, {"path": "logs"}),
-        (r".*", BaseHandler),
+        (i['Route'], globals()[i['Class']], i.get("Param"))
+        if "Param" in i else
+        (i['Route'], globals()[i['Class']]) for i in route
     ])
 
 
@@ -249,7 +258,7 @@ if __name__ == "__main__":
 
     server_host = "0.0.0.0"
     logger.info('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
-    app = make_app()
+    app = make_app(system_config.route_map)
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.bind(server_port, server_host)
     http_server.start(1)
@@ -258,3 +267,4 @@ if __name__ == "__main__":
         tornado.ioloop.IOLoop.instance().start()
     except KeyboardInterrupt:
         tornado.ioloop.IOLoop.instance().stop()
+

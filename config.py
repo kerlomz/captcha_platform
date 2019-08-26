@@ -8,6 +8,7 @@ import hashlib
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from character import *
+from constants import SystemConfig
 
 
 class Config(object):
@@ -22,6 +23,8 @@ class Config(object):
         self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
         self.strict_sites = self.sys_cf['System'].get('StrictSites')
         self.strict_sites = True if self.strict_sites is None else self.strict_sites
+        self.route_map = self.sys_cf.get('RouteMap')
+        self.route_map = self.route_map if self.route_map else SystemConfig.default_route
         self.log_path = "logs"
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
@@ -137,6 +140,8 @@ class ModelConfig(Model):
         self.image_height = None
         self.image_width = None
         self.image_channel = None
+        self.padding = None
+        self.lower_padding = None
         self.resize = None
         self.binaryzation = None
         self.smooth = None
@@ -159,7 +164,7 @@ class ModelConfig(Model):
         self.device = system.get('Device') if system else None
         self.device = self.device if self.device else "cpu:0"
         self.device_usage = system.get('DeviceUsage') if system else None
-        self.device_usage = self.device_usage if self.device_usage else 0.1
+        self.device_usage = self.device_usage if self.device_usage else 0.01
 
         self.charset = self.cf_model['Model'].get('CharSet')
         self.gen_charset = self.char_set(self.charset)
@@ -193,6 +198,8 @@ class ModelConfig(Model):
         self.resize = self.cf_model['Pretreatment'].get('Resize')
         self.resize = self.resize if self.resize else [self.image_width, self.image_height]
         self.replace_transparent = self.cf_model['Pretreatment'].get('ReplaceTransparent')
+        self.padding = self.cf_model['Pretreatment'].get('Padding')
+        self.lower_padding = self.cf_model['Pretreatment'].get('LowerPadding')
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
         if not os.path.exists(self.compile_model_path):
             if not os.path.exists(self.graph_path):

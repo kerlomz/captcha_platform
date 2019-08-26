@@ -2,7 +2,7 @@
 # Used to package as a single executable
 # This is a configuration file
 
-block_cipher = pyi_crypto.PyiBlockCipher(key='kerlomz&coriander')
+block_cipher = None
 
 added_files = [('resource/icon.ico', 'resource')]
 

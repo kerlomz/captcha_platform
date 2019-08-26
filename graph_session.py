@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+import os
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import NotFoundError
 from config import ModelConfig
+
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_cpu_global_jit'
 
 
 class GraphSession(object):
@@ -17,12 +20,12 @@ class GraphSession(object):
         self.model_site = self.model_conf.model_site
         self.version = self.model_conf.version
         self.graph = tf.Graph()
-        self.sess = tf.Session(
+        self.sess = tf.compat.v1.Session(
             graph=self.graph,
-            config=tf.ConfigProto(
+            config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True,
                 # log_device_placement=True,
-                gpu_options=tf.GPUOptions(
+                gpu_options=tf.compat.v1.GPUOptions(
                     # allow_growth=True,  # it will cause fragmentation.
                     per_process_gpu_memory_fraction=self.model_conf.device_usage
                 ))
@@ -39,11 +42,11 @@ class GraphSession(object):
             self.destroy()
             return False
         try:
-            with tf.gfile.GFile(self.model_conf.compile_model_path, "rb") as f:
+            with tf.io.gfile.GFile(self.model_conf.compile_model_path, "rb") as f:
                 graph_def_file = f.read()
             self.graph_def.ParseFromString(graph_def_file)
             with self.graph.as_default():
-                self.sess.run(tf.global_variables_initializer())
+                self.sess.run(tf.compat.v1.global_variables_initializer())
                 _ = tf.import_graph_def(self.graph_def, name="")
 
             self.logger.info('TensorFlow Session {} Loaded.'.format(self.model_conf.target_model))

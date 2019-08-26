@@ -3,8 +3,47 @@
 # Author: kerlomz <kerlomz@gmail.com>
 
 
-class Config:
+class SystemConfig:
     split_flag = b'\x00\xff\xff\xff\x00'
+    default_route = [
+            {
+                "Class": "AuthHandler",
+                "Route": "/captcha/auth/v2"
+            },
+            {
+                "Class": "NoAuthHandler",
+                "Route": "/captcha/v1"
+            },
+            {
+                "Class": "SimpleHandler",
+                "Route": "/captcha/v3"
+            },
+            {
+                "Class": "HeartBeatHandler",
+                "Route": "/check_backend_active.html"
+            },
+            {
+                "Class": "HeartBeatHandler",
+                "Route": "/verification"
+            },
+            {
+                "Class": "HeartBeatHandler",
+                "Route": "/"
+            },
+            {
+                "Class": "ServiceHandler",
+                "Route": "/service/info"
+            },
+            {
+                "Class": "FileHandler",
+                "Route": "/service/logs/(.*)",
+                "Param": {"path": "logs"}
+            },
+            {
+                "Class": "BaseHandler",
+                "Route": ".*"
+            }
+        ]
 
 
 class ServerType(str):
