@@ -73,49 +73,46 @@ class InterfaceManager(object):
         interface = self.get_by_name(graph_name, False)
         self.remove(interface)
 
-    def get_by_sites(self, model_site, size: str, return_default=True, strict=True):
+    def get_by_sites(self, model_site, size: str, return_default=True):
+
         match_ids = [i for i in range(len(self.group)) if (
             model_site in self.group[i].model_site
-            if strict
-            else model_site in self.group[i].model_site and size == self.group[i].size_str
         )]
-        max_id = match_ids[0] if match_ids else 0
-        for i in match_ids:
-            interface = self.group[i]
-            if interface.version > self.group[i].version:
-                max_id = i
-        return self.group[max_id] if match_ids else self.get_by_size(size) if return_default else None
+        if not match_ids:
+            return self.get_by_size(size, return_default=return_default)
+        else:
+            match_size_ids = [i for i in match_ids if self.group[i].size_str == size]
+            match_ids = (match_ids if not match_size_ids else match_size_ids)
+            ver = [self.group[i].version for i in match_ids]
+            return self.group[match_ids[ver.index(max(ver))]]
 
     def get_by_size(self, size: str, return_default=True):
 
         match_ids = [i for i in range(len(self.group)) if self.group[i].size_str == size]
-        max_id = match_ids[0] if match_ids else 0
-        for i in match_ids:
-            interface = self.group[i]
-            if interface.version > self.group[i].version:
-                max_id = i
-        return self.group[max_id] if match_ids else self.default if return_default else None
+        if not match_ids:
+            return self.default if return_default else None
+        else:
+            ver = [self.group[i].version for i in match_ids]
+            return self.group[match_ids[ver.index(max(ver))]]
 
     def get_by_type_size(self, size: str, model_type: str, return_default=True):
         match_ids = [
             i for i in range(len(self.group))
             if self.group[i].size_str == size and self.group[i].model_type == model_type
         ]
-        max_id = match_ids[0] if match_ids else 0
-        for i in match_ids:
-            interface = self.group[i]
-            if interface.version > self.group[i].version:
-                max_id = i
-        return self.group[max_id] if match_ids else self.get_by_type(model_type, return_default)
+        if not match_ids:
+            return self.get_by_type(model_type, return_default)
+        else:
+            ver = [self.group[i].version for i in match_ids]
+            return self.group[match_ids[ver.index(max(ver))]]
 
     def get_by_type(self, model_type: str, return_default=True):
         match_ids = [i for i in range(len(self.group)) if self.group[i].model_type == model_type]
-        max_id = match_ids[0] if match_ids else 0
-        for i in match_ids:
-            interface = self.group[i]
-            if interface.version > self.group[i].version:
-                max_id = i
-        return self.group[max_id] if match_ids else self.default if return_default else None
+        if not match_ids:
+            return self.default if return_default else None
+        else:
+            ver = [self.group[i].version for i in match_ids]
+            return self.group[match_ids[ver.index(max(ver))]]
 
     def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
