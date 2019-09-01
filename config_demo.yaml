@@ -12,7 +12,7 @@ RouteMap:
     Route: /captcha/auth/v2
   -
     Class: NoAuthHandler
-    Route: /captcha/v11
+    Route: /captcha/v1
   -
     Class: SimpleHandler
     Route: /captcha/v3
