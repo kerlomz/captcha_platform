@@ -126,9 +126,15 @@ class ImageUtils(object):
             if model.image_channel == 1:
                 pil_image = pil_image.convert('L')
 
+            im = np.asarray(pil_image)
+            if model.horizontal_stitching:
+                up_slice = im[0: int(size[1] / 2), 0: size[0]]
+                down_slice = im[int(size[1] / 2): size[1], 0: size[0]]
+                im = np.concatenate((up_slice, down_slice), axis=1)
             # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-            image = preprocessing(np.asarray(pil_image), model.binaryzation, model.smooth, model.blur).astype(
+            image = preprocessing(im, model.binaryzation, model.smooth, model.blur).astype(
                 np.float32)
+
             if model.resize[0] == -1:
                 ratio = model.resize[1] / size[1]
                 resize_width = int(ratio * size[0])

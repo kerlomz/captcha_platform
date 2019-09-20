@@ -19,7 +19,7 @@ def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig
         expression = ''
 
         for i in item:
-            if i == -1:
+            if i == -1 or i == model.charset_len:
                 expression += ''
             else:
                 expression += decode_maps(model.gen_charset)[i]

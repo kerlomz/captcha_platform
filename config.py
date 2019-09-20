@@ -142,11 +142,13 @@ class ModelConfig(Model):
         self.image_channel = None
         self.padding = None
         self.lower_padding = None
+        self.char_len = None
         self.resize = None
         self.binaryzation = None
         self.smooth = None
         self.blur = None
         self.replace_transparent = None
+        self.horizontal_stitching = None
         self.model_site = None
         self.version = None
         self.mac_address = None
@@ -185,6 +187,7 @@ class ModelConfig(Model):
         self.version = self.cf_model['Model'].get('Version')
         self.version = self.version if self.version else 1.0
         self.split_char = self.cf_model['Model'].get('SplitChar')
+        self.char_len = self.cf_model['Model'].get('CharLen')
         self.split_char = '' if not self.split_char else self.split_char
 
         self.image_height = self.cf_model['Model'].get('ImageHeight')
@@ -198,6 +201,7 @@ class ModelConfig(Model):
         self.resize = self.cf_model['Pretreatment'].get('Resize')
         self.resize = self.resize if self.resize else [self.image_width, self.image_height]
         self.replace_transparent = self.cf_model['Pretreatment'].get('ReplaceTransparent')
+        self.horizontal_stitching = self.cf_model['Pretreatment'].get('HorizontalStitching')
         self.padding = self.cf_model['Pretreatment'].get('Padding')
         self.lower_padding = self.cf_model['Pretreatment'].get('LowerPadding')
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
