@@ -4,6 +4,7 @@
 import os
 import time
 import json
+import asyncio
 import numpy.core.multiarray
 import numpy.core._dtype_ctypes
 import optparse
@@ -28,6 +29,7 @@ from middleware import *
 
 sign = Signature(ServerType.TORNADO)
 arithmetic = Arithmetic()
+semaphore = asyncio.Semaphore(500)
 
 
 class BaseHandler(RequestHandler):
@@ -106,7 +108,7 @@ class NoAuthHandler(BaseHandler):
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
         if 'model_site' in data and data['model_site']:
-            interface = interface_manager.get_by_sites(model_site, size_string, strict=system_config.strict_sites)
+            interface = interface_manager.get_by_sites(model_site, size_string)
         elif 'model_type' in data and data['model_type']:
             interface = interface_manager.get_by_type_size(size_string, model_type)
         elif 'model_name' in data and data['model_name']:

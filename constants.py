@@ -4,7 +4,7 @@
 
 
 class SystemConfig:
-    split_flag = b'\x00\xff\xff\xff\x00'
+    split_flag = b'\x99\x99\x99\x00\xff\xff\xff\x00\x99\x99\x99'
     default_route = [
             {
                 "Class": "AuthHandler",

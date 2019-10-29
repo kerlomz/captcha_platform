@@ -42,7 +42,7 @@ class ColorExtract:
                 # log_device_placement=True,
                 gpu_options=tf.compat.v1.GPUOptions(
                     # allow_growth=True,  # it will cause fragmentation.
-                    per_process_gpu_memory_fraction=0.01
+                    per_process_gpu_memory_fraction=0.3
                 ))
         )
         self.color_graph_def = self.color_graph.as_graph_def()
