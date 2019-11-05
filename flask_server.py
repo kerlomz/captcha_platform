@@ -109,6 +109,8 @@ def common_request():
         interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
     elif 'model_name' in request.json:
         interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+        key = request.json['model_name'] + '&' + size_string
+        interface = interface_manager.get_by_name(key)
     else:
         interface = interface_manager.get_by_size(size_string)
 
