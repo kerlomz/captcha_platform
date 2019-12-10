@@ -176,6 +176,7 @@ class SimpleHandler(BaseHandler):
         logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
+        response['message'] = result
         return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
