@@ -16,10 +16,8 @@ class Interface(object):
         self.model_conf = graph_session.model_conf
         self.size_str = self.model_conf.size_string
         self.graph_name = self.graph_sess.graph_name
-        self.model_type = self.graph_sess.model_type
-        self.model_site = self.graph_sess.model_site
         self.version = self.graph_sess.version
-        self.model_charset = self.model_conf.charset
+        self.model_category = self.model_conf.category
         if self.graph_sess.loaded:
             self.sess = self.graph_sess.session
             self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
@@ -37,14 +35,14 @@ class Interface(object):
     def destroy(self):
         self.graph_sess.destroy()
 
-    def predict_batch(self, image_batch, split_char=None):
+    def predict_batch(self, image_batch, output_split=None):
         predict_text = predict_func(
             image_batch,
             self.sess,
             self.dense_decoded,
             self.x,
             self.model_conf,
-            split_char
+            output_split
         )
         return predict_text
 
@@ -73,41 +71,9 @@ class InterfaceManager(object):
         interface = self.get_by_name(graph_name, False)
         self.remove(interface)
 
-    def get_by_sites(self, model_site, size: str, return_default=True):
-
-        match_ids = [i for i in range(len(self.group)) if (
-            model_site in self.group[i].model_site
-        )]
-        if not match_ids:
-            return self.get_by_size(size, return_default=return_default)
-        else:
-            match_size_ids = [i for i in match_ids if self.group[i].size_str == size]
-            match_ids = (match_ids if not match_size_ids else match_size_ids)
-            ver = [self.group[i].version for i in match_ids]
-            return self.group[match_ids[ver.index(max(ver))]]
-
     def get_by_size(self, size: str, return_default=True):
 
         match_ids = [i for i in range(len(self.group)) if self.group[i].size_str == size]
-        if not match_ids:
-            return self.default if return_default else None
-        else:
-            ver = [self.group[i].version for i in match_ids]
-            return self.group[match_ids[ver.index(max(ver))]]
-
-    def get_by_type_size(self, size: str, model_type: str, return_default=True):
-        match_ids = [
-            i for i in range(len(self.group))
-            if self.group[i].size_str == size and self.group[i].model_type == model_type
-        ]
-        if not match_ids:
-            return self.get_by_type(model_type, return_default)
-        else:
-            ver = [self.group[i].version for i in match_ids]
-            return self.group[match_ids[ver.index(max(ver))]]
-
-    def get_by_type(self, model_type: str, return_default=True):
-        match_ids = [i for i in range(len(self.group)) if self.group[i].model_type == model_type]
         if not match_ids:
             return self.default if return_default else None
         else:

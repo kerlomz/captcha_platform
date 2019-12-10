@@ -7,8 +7,17 @@ import yaml
 import hashlib
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from character import *
-from constants import SystemConfig
+from category import *
+from constants import SystemConfig, ModelField, ModelScene
+
+MODEL_SCENE_MAP = {
+    'Classification': ModelScene.Classification
+}
+
+MODEL_FIELD_MAP = {
+    'Image': ModelField.Image,
+    'Text': ModelField.Text
+}
 
 
 class Config(object):
@@ -21,16 +30,12 @@ class Config(object):
         self.secret_key = None
         self.default_model = self.sys_cf['System']['DefaultModel']
         self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
-        self.strict_sites = self.sys_cf['System'].get('StrictSites')
-        self.strict_sites = True if self.strict_sites is None else self.strict_sites
         self.route_map = self.sys_cf.get('RouteMap')
         self.route_map = self.route_map if self.route_map else SystemConfig.default_route
         self.log_path = "logs"
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
         self.logger = logging.getLogger(self.logger_tag)
-        self.static_path = self.sys_cf['System'].get('StaticPath')
-        self.static_path = self.static_path if self.static_path else 'static'
         self.use_default_authorization = False
         self.authorization = None
         self.init_logger()
@@ -81,21 +86,21 @@ class Config(object):
 
 class Model(object):
 
-    def __init__(self, conf: Config, model_conf: str):
+    def __init__(self, conf: Config, model_conf_path: str):
         self.conf = conf
         self.logger = self.conf.logger
         self.graph_path = conf.graph_path
         self.model_path = conf.model_path
-        self.model_conf = model_conf
+        self.model_conf_path = model_conf_path
         self.model_conf_demo = 'model_demo.yaml'
         self.verify()
 
     def verify(self):
-        if not os.path.exists(self.model_conf):
+        if not os.path.exists(self.model_conf_path):
             raise Exception(
                 'Configuration File "{}" No Found. '
                 'If it is used for the first time, please copy one from {} as {}'.format(
-                    self.model_conf,
+                    self.model_conf_path,
                     self.model_conf_demo,
                     self.model_path
                 )
@@ -107,104 +112,77 @@ class Model(object):
                 'For the first time, please put the trained model in the model directory.'
             )
 
-    def char_set(self, _type):
-        if isinstance(_type, list):
-            return _type
-        if isinstance(_type, str):
-            return SIMPLE_CHAR_SET.get(_type) if _type in SIMPLE_CHAR_SET.keys() else None
-        self.logger.error(
-            "Character set configuration error, customized character set should be list type"
-        )
+    def category_extract(self, param):
+        if isinstance(param, list):
+            return param
+        if isinstance(param, str):
+            if param in SIMPLE_CATEGORY_MODEL.keys():
+                return SIMPLE_CATEGORY_MODEL.get(param)
+            self.logger.error(
+                "Category set configuration error, customized category set should be list type"
+            )
+            return None
 
     @property
-    def read_conf(self):
-        with open(self.model_conf, 'r', encoding="utf-8") as sys_fp:
+    def model_conf(self) -> dict:
+        with open(self.model_conf_path, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
             return yaml.load(sys_stream, Loader=yaml.SafeLoader)
 
 
 class ModelConfig(Model):
 
-    def __init__(self, conf: Config, model_conf: str):
-        super().__init__(conf=conf, model_conf=model_conf)
-        self.system = None
-        self.device = None
-        self.device_usage = None
-        self.charset = None
-        self.split_char = None
-        self.gen_charset = None
-        self.char_exclude = None
-        self.charset_len = None
-        self.target_model = None
-        self.model_type = None
-        self.image_height = None
-        self.image_width = None
-        self.image_channel = None
-        self.padding = None
-        self.lower_padding = None
-        self.char_len = None
-        self.resize = None
-        self.binaryzation = None
-        self.smooth = None
-        self.blur = None
-        self.replace_transparent = None
-        self.horizontal_stitching = None
-        self.model_site = None
-        self.version = None
-        self.mac_address = None
-        self.compile_model_path = None
-        self.model_name_md5 = None
-        self.color_engine = None
-        self.cf_model = self.read_conf
-        self.model_exists = False
-        self.assignment()
-        self.graph_name = "{}&{}".format(self.target_model, self.size_string)
+    def __init__(self, conf: Config, model_conf_path: str):
+        super().__init__(conf=conf, model_conf_path=model_conf_path)
 
-    def assignment(self):
+        """MODEL"""
+        self.model_root: dict = self.model_conf['Model']
+        self.model_name: str = self.model_root.get('ModelName')
+        self.model_version: float = self.model_root.get('Version')
+        self.model_version = self.model_version if self.model_version else 1.0
+        self.model_field_param: str = self.model_root.get('ModelField')
+        self.model_field: ModelField = ModelConfig.param_convert(
+            source=self.model_field_param,
+            param_map=MODEL_FIELD_MAP,
+            text="Current model field ({model_field}) is not supported".format(model_field=self.model_field_param),
+            code=50002
+        )
 
-        system = self.cf_model.get('System')
-        self.device = system.get('Device') if system else None
-        self.device = self.device if self.device else "cpu:0"
-        self.device_usage = system.get('DeviceUsage') if system else None
-        self.device_usage = self.device_usage if self.device_usage else 0.01
+        self.model_scene_param: str = self.model_root.get('ModelScene')
 
-        self.charset = self.cf_model['Model'].get('CharSet')
-        self.gen_charset = self.char_set(self.charset)
-        if self.gen_charset is None:
+        self.model_scene: ModelScene = ModelConfig.param_convert(
+            source=self.model_scene_param,
+            param_map=MODEL_SCENE_MAP,
+            text="Current model scene ({model_scene}) is not supported".format(model_scene=self.model_scene_param),
+            code=50001
+        )
+
+        """SYSTEM"""
+        self.checkpoint_tag = 'checkpoint'
+        self.system_root: dict = self.model_conf['System']
+        self.memory_usage: float = self.system_root.get('MemoryUsage')
+
+        """FIELD PARAM - IMAGE"""
+        self.field_root: dict = self.model_conf['FieldParam']
+        self.category_param = self.field_root.get('Category')
+        self.category_value = self.category_extract(self.category_param)
+        if self.category_value is None:
             raise Exception(
-                "The character set type does not exist, there is no character set named {}".format(self.charset),
+                "The category set type does not exist, there is no category set named {}".format(self.category_param),
             )
+        self.category: list = SPACE_TOKEN + self.category_value
+        self.category_num: int = len(self.category)
+        self.image_channel: int = self.field_root.get('ImageChannel')
+        self.image_width: int = self.field_root.get('ImageWidth')
+        self.image_height: int = self.field_root.get('ImageHeight')
+        self.resize: list = self.field_root.get('Resize')
+        self.replace_transparent: bool = self.field_root.get("ReplaceTransparent")
+        self.horizontal_stitching: bool = self.field_root.get("HorizontalStitching")
+        self.output_split = self.field_root.get('OutputSplit')
+        self.output_split = self.output_split if self.output_split else ""
 
-        self.char_exclude = self.cf_model['Model'].get('CharExclude')
-
-        self.gen_charset = [''] + [i for i in self.char_set(self.charset) if i not in self.char_exclude]
-        self.charset_len = len(self.gen_charset)
-
-        self.target_model = self.cf_model['Model'].get('ModelName')
-        self.model_type = self.cf_model['Model'].get('ModelType')
-        self.model_site = self.cf_model['Model'].get('Sites')
-        self.model_site = self.model_site if self.model_site else []
-        self.version = self.cf_model['Model'].get('Version')
-        self.version = self.version if self.version else 1.0
-        self.split_char = self.cf_model['Model'].get('SplitChar')
-        self.char_len = self.cf_model['Model'].get('CharLen')
-        self.split_char = '' if not self.split_char else self.split_char
-
-        self.image_height = self.cf_model['Model'].get('ImageHeight')
-        self.image_width = self.cf_model['Model'].get('ImageWidth')
-        self.image_channel = self.cf_model['Model'].get('ImageChannel')
-        self.image_channel = self.image_channel if self.image_channel else 1
-        self.binaryzation = self.cf_model['Pretreatment'].get('Binaryzation')
-        self.smooth = self.cf_model['Pretreatment'].get('Smoothing')
-        self.blur = self.cf_model['Pretreatment'].get('Blur')
-        self.blur = self.cf_model['Pretreatment'].get('Blur')
-        self.resize = self.cf_model['Pretreatment'].get('Resize')
-        self.resize = self.resize if self.resize else [self.image_width, self.image_height]
-        self.replace_transparent = self.cf_model['Pretreatment'].get('ReplaceTransparent')
-        self.horizontal_stitching = self.cf_model['Pretreatment'].get('HorizontalStitching')
-        self.padding = self.cf_model['Pretreatment'].get('Padding')
-        self.lower_padding = self.cf_model['Pretreatment'].get('LowerPadding')
-        self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.target_model))
+        """COMPILE_MODEL"""
+        self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
         if not os.path.exists(self.compile_model_path):
             if not os.path.exists(self.graph_path):
                 os.makedirs(self.graph_path)
@@ -213,6 +191,14 @@ class ModelConfig(Model):
             )
         else:
             self.model_exists = True
+
+    @staticmethod
+    def param_convert(source, param_map: dict, text, code, default=None):
+        if source is None:
+            return default
+        if source not in param_map.keys():
+            raise Exception(text)
+        return param_map[source]
 
     def size_match(self, size_str):
         return size_str == self.size_string

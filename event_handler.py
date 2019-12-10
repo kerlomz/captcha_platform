@@ -63,7 +63,7 @@ class FileEventHandler(FileSystemEventHandler):
                 return
             if model_path.endswith("yaml"):
                 model_conf = ModelConfig(self.conf, model_path)
-                inner_name = model_conf.target_model
+                inner_name = model_conf.model_name
                 inner_size = model_conf.size_string
                 inner_key = PathUtils.get_file_name(model_path)
                 for k, v in self.name_map.items():
@@ -80,7 +80,7 @@ class FileEventHandler(FileSystemEventHandler):
                         )
                         break
 
-                inner_value = model_conf.graph_name
+                inner_value = model_conf.model_name
                 graph_session = GraphSession(model_conf)
                 if graph_session.loaded:
                     interface = Interface(graph_session)

@@ -5,8 +5,6 @@ import os
 import time
 import json
 import asyncio
-import numpy.core.multiarray
-import numpy.core._dtype_ctypes
 import optparse
 import threading
 import tornado.ioloop
@@ -21,11 +19,10 @@ from interface import InterfaceManager, Interface
 from config import Config
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
-from watchdog.observers import Observer
-from event_handler import FileEventHandler
 from tornado.concurrent import run_on_executor
 from concurrent.futures import ThreadPoolExecutor
 from middleware import *
+from event_loop import event_loop
 
 sign = Signature(ServerType.TORNADO)
 arithmetic = Arithmetic()
@@ -67,14 +64,14 @@ class BaseHandler(RequestHandler):
 class NoAuthHandler(BaseHandler):
 
     @run_on_executor
-    def predict(self, interface: Interface, image_batch, split_char, size_string, model_type, model_site, start_time):
+    def predict(self, interface: Interface, image_batch, split_char, size_string, start_time):
         result = interface.predict_batch(image_batch, split_char)
-        if interface.model_charset == 'ARITHMETIC':
+        if interface.model_category == 'ARITHMETIC':
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))
-        logger.info('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Predict[{}] - {} ms'.format(
-            self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, result,
+        logger.info('[{} {}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
+            self.request.remote_ip, self.request.uri, interface.name, size_string, result,
             round((time.time() - start_time) * 1000))
         )
 
@@ -87,19 +84,18 @@ class NoAuthHandler(BaseHandler):
         if 'image' not in data.keys():
             raise tornado.web.HTTPError(400)
 
-        model_type = ParamUtils.filter(data.get('model_type'))
-        model_site = ParamUtils.filter(data.get('model_site'))
         model_name = ParamUtils.filter(data.get('model_name'))
-        split_char = ParamUtils.filter(data.get('split_char'))
+        output_split = ParamUtils.filter(data.get('output_split'))
         need_color = ParamUtils.filter(data.get('need_color'))
+
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode({"message": "", "success": False, "code": -999}))
         bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
-            logger.error('[{} {}] | Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                self.request.remote_ip, self.request.uri, model_type, model_site, response,
+            logger.error('[{} {}] | - Response[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, response,
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
@@ -107,11 +103,7 @@ class NoAuthHandler(BaseHandler):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
-        if 'model_site' in data and data['model_site']:
-            interface = interface_manager.get_by_sites(model_site, size_string)
-        elif 'model_type' in data and data['model_type']:
-            interface = interface_manager.get_by_type_size(size_string, model_type)
-        elif 'model_name' in data and data['model_name']:
+        if 'model_name' in data and data['model_name']:
             interface = interface_manager.get_by_name(model_name)
         else:
             interface = interface_manager.get_by_size(size_string)
@@ -119,7 +111,7 @@ class NoAuthHandler(BaseHandler):
             logger.info('Service is not ready!')
             return self.finish(json_encode({"message": "", "success": False, "code": 999}))
 
-        split_char = split_char if 'split_char' in data else interface.model_conf.split_char
+        output_split = output_split if 'output_split' in data else interface.model_conf.output_split
 
         if need_color:
             bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
@@ -127,12 +119,12 @@ class NoAuthHandler(BaseHandler):
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
-            logger.error('[{} {}] | [{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-                self.request.remote_ip, self.request.uri, interface.name, size_string, model_type, model_site, response,
+            logger.error('[{} {}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, interface.name, size_string, response,
                 round((time.time() - start_time) * 1000))
             )
             return self.finish(json_encode(response))
-        response['message'] = yield self.predict(interface, image_batch, split_char, size_string, model_type, model_site, start_time)
+        response['message'] = yield self.predict(interface, image_batch, output_split, size_string, start_time)
         return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
@@ -184,7 +176,6 @@ class SimpleHandler(BaseHandler):
         logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
-        response['message'] = result
         return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
@@ -222,19 +213,6 @@ def make_app(route: list):
     ])
 
 
-def event_loop():
-    observer = Observer()
-    event_handler = FileEventHandler(system_config, model_path, interface_manager)
-    observer.schedule(event_handler, event_handler.model_conf_path, True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-
-
 if __name__ == "__main__":
 
     parser = optparse.OptionParser()
@@ -254,7 +232,7 @@ if __name__ == "__main__":
     logger = system_config.logger
     tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
-    threading.Thread(target=event_loop).start()
+    threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
 
     sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 

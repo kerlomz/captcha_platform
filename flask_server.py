@@ -103,11 +103,7 @@ def common_request():
     image_size = ImageUtils.size_of_image(image_sample)
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
-    if 'model_site' in request.json:
-        interface = interface_manager.get_by_sites(request.json['model_site'], size_string, strict=system_config.strict_sites)
-    elif 'model_type' in request.json:
-        interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
-    elif 'model_name' in request.json:
+    if 'model_name' in request.json:
         interface = interface_manager.get_by_name(size_string, request.json['model_name'])
     else:
         interface = interface_manager.get_by_size(size_string)

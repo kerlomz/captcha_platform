@@ -1,6 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
+from enum import Enum, unique
+
+
+@unique
+class ModelScene(Enum):
+    """模型场景枚举"""
+    Classification = 'Classification'
+
+
+@unique
+class ModelField(Enum):
+    """模型类别枚举"""
+    Image = 'Image'
+    Text = 'Text'
 
 
 class SystemConfig:

@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 
+SPACE_TOKEN = ['']
 NUMBER = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 ALPHA_UPPER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                'V', 'W', 'X', 'Y', 'Z']
@@ -187,7 +188,7 @@ CHINESE_3500 = [
 
 FLOAT = ['.']
 
-SIMPLE_CHAR_SET = dict(
+SIMPLE_CATEGORY_MODEL = dict(
     NUMERIC=NUMBER,
     ALPHANUMERIC=NUMBER + ALPHA_LOWER + ALPHA_UPPER,
     ALPHANUMERIC_LOWER=NUMBER + ALPHA_LOWER,
@@ -201,3 +202,7 @@ SIMPLE_CHAR_SET = dict(
     CHINESE_3500=CHINESE_3500,
     ALPHANUMERIC_LOWER_MIX_CHINESE_3500=NUMBER + ALPHA_LOWER + CHINESE_3500
 )
+
+
+def encode_maps(source):
+    return {category: i for i, category in enumerate(source, 0)}

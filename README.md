@@ -101,6 +101,7 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
         - tornado_server.py
         - sanic_server.py
         - demo.py
+        - config.yaml
     - model
         - model-1.yaml
         - model-2.yaml
