@@ -14,7 +14,7 @@ This project is only for deployment models, If you need to train the model, plea
 
 
 # Start
-1. Install the python 3.6 environment (with pip)
+1. Install the python 3.7 environment (with pip)
 2. Install virtualenv ```pip3 install virtualenv```
 3. Create a separate virtual environment for the project:
     ```bash
@@ -65,8 +65,8 @@ This project is only for deployment models, If you need to train the model, plea
     | Parameter | Required | Type | Description |
     | ---------- | ---- | ------ | ------------------------ |
     | image | Yes | String | Base64 encoding binary stream |
-    | model_site | No | String | Site name, bindable in yaml configuration |
-    | model_type | No | String | Category, bindable in yaml configuration |
+    | model_name | No | String | ModelName, bindable in yaml configuration |
+
     
     The request is in JSON format, like: {"image": "base64 encoded image binary stream"}
 
@@ -79,7 +79,7 @@ This project is only for deployment models, If you need to train the model, plea
     | success | String | Whether to request success |
     
     The return is in JSON format, like: {"message": "xxxx", "code": 0, "success": true}
- 
+
 
 ## 2. G-RPC Version
 Deploy: 
@@ -121,7 +121,7 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. ./grpc.proto
  - Put the trained pb model in the graph folder.
  - Put the yaml configuration file with "Version" greater than the current version in the model folder.
  - Delete old models and configurations.
- 
+
 # License
 This project use SATA License (Star And Thank Author License), so you have to star this project before using. Read the license carefully.
 
@@ -130,4 +130,3 @@ https://www.jianshu.com/p/80ef04b16efc
 
 # Donate
 Thank you very much for your support of my project.
-![赞助](https://kerlomz-business.oss-cn-hangzhou.aliyuncs.com/WeChat%20Image_20190212111824.jpg)
