@@ -4,13 +4,15 @@
 from config import ModelConfig
 
 
-def decode_maps(charset):
-    return {i: char for i, char in enumerate(charset, 0)}
+def decode_maps(categories):
+    return {index: category for index, category in enumerate(categories, 0)}
 
 
-def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig, split_char=None):
-    if split_char is None:
-        split_char = model.split_char
+def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig, output_split=None):
+
+    if output_split is None:
+        output_split = model.output_split
+
     dense_decoded_code = _sess.run(dense_decoded, feed_dict={
         op_input: image_batch,
     })
@@ -19,9 +21,9 @@ def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig
         expression = ''
 
         for i in item:
-            if i == -1 or i == model.charset_len:
+            if i == -1 or i == model.category_num:
                 expression += ''
             else:
-                expression += decode_maps(model.gen_charset)[i]
+                expression += decode_maps(model.category)[i]
         decoded_expression.append(expression)
-    return split_char.join(decoded_expression) if len(decoded_expression) > 1 else decoded_expression[0]
+    return output_split.join(decoded_expression) if len(decoded_expression) > 1 else decoded_expression[0]

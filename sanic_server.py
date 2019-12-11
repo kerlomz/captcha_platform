@@ -13,6 +13,7 @@ from sanic import Sanic
 from sanic.response import json
 from signature import Signature, ServerType
 from middleware import *
+from event_loop import event_loop
 
 app = Sanic()
 sign = Signature(ServerType.SANIC)
@@ -56,11 +57,7 @@ def common_request(request):
     image_size = ImageUtils.size_of_image(image_sample)
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
-    if 'model_site' in request.json:
-        interface = interface_manager.get_by_sites(request.json['model_site'], size_string, strict=system_config.strict_sites)
-    elif 'model_type' in request.json:
-        interface = interface_manager.get_by_type_size(size_string, request.json['model_type'])
-    elif 'model_name' in request.json:
+    if 'model_name' in request.json:
         interface = interface_manager.get_by_name(size_string, request.json['model_name'])
     else:
         interface = interface_manager.get_by_size(size_string)
@@ -92,19 +89,6 @@ def common_request(request):
     return json(response)
 
 
-def event_loop():
-    observer = Observer()
-    event_handler = FileEventHandler(system_config, model_path, interface_manager)
-    observer.schedule(event_handler, event_handler.model_conf_path, True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-
-
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=19953, dest="port")
@@ -121,7 +105,7 @@ if __name__ == "__main__":
     sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
     logger = system_config.logger
     interface_manager = InterfaceManager()
-    threading.Thread(target=event_loop).start()
+    threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
 
     server_host = "0.0.0.0"
 

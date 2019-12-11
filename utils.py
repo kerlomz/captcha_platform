@@ -17,7 +17,6 @@ from PIL import Image as PIL_Image
 from constants import Response, SystemConfig
 from pretreatment import preprocessing
 from config import ModelConfig
-from paramiko import SFTPClient
 
 
 class Arithmetic(object):
@@ -131,25 +130,14 @@ class ImageUtils(object):
                 up_slice = im[0: int(size[1] / 2), 0: size[0]]
                 down_slice = im[int(size[1] / 2): size[1], 0: size[0]]
                 im = np.concatenate((up_slice, down_slice), axis=1)
-            # image = cv2.cvtColor(np.asarray(pil_image), cv2.COLOR_RGB2GRAY)
-            image = preprocessing(im, model.binaryzation, model.smooth, model.blur).astype(
-                np.float32)
 
+            image = im.astype(np.float32)
             if model.resize[0] == -1:
                 ratio = model.resize[1] / size[1]
                 resize_width = int(ratio * size[0])
                 image = cv2.resize(image, (resize_width, model.resize[1]))
             else:
                 image = cv2.resize(image, (model.resize[0], model.resize[1]))
-            if model.padding:
-                image = tf.keras.preprocessing.sequence.pad_sequences(
-                    sequences=image,
-                    maxlen=model.padding if model.lower_padding and model.resize[0] < model.lower_padding else None,
-                    dtype='float32',
-                    padding='post',
-                    truncating='post',
-                    value=0
-                )
             image = image.swapaxes(0, 1)
             return (image[:, :, np.newaxis] if model.image_channel == 1 else image[:, :]) / 255.
 
@@ -240,8 +228,8 @@ class SystemUtils(object):
             return False
 
     @staticmethod
-    def empty(sftp: SFTPClient, path):
-
+    def empty(sftp, path):
+        from paramiko import SFTPClient
         if not SystemUtils.isdir(sftp, path):
             sftp.mkdir(path)
 

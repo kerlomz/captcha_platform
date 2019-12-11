@@ -16,6 +16,7 @@ from config import Config
 from event_handler import FileEventHandler
 from watchdog.observers import Observer
 from middleware import *
+from event_loop import event_loop
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -36,12 +37,8 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
-        if request.model_site:
-            interface = interface_manager.get_by_sites(request.model_site, size_string)
-        elif request.model_name:
+        if request.model_name:
             interface = interface_manager.get_by_name(request.model_name)
-        elif request.model_type:
-            interface = interface_manager.get_by_type_size(size_string, request.model_type)
         else:
             interface = interface_manager.get_by_size(size_string)
         if not interface:
@@ -51,6 +48,7 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         if request.need_color:
             bytes_batch = [color_extract.separate_color(_, color_map[request.need_color]) for _ in bytes_batch]
 
+        # bytes_batch =
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:
@@ -80,19 +78,6 @@ def serve():
         server.stop(0)
 
 
-def event_loop():
-    observer = Observer()
-    event_handler = FileEventHandler(system_config, model_path, interface_manager)
-    observer.schedule(event_handler, event_handler.model_conf_path, True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-
-
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=50054, dest="port")
@@ -106,7 +91,7 @@ if __name__ == '__main__':
     graph_path = opt.graph_path
     system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
     interface_manager = InterfaceManager()
-    threading.Thread(target=event_loop).start()
+    threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
 
     logger = system_config.logger
     server_host = "0.0.0.0"
