@@ -58,7 +58,7 @@ def common_request(request):
     size_string = "{}x{}".format(image_size[0], image_size[1])
 
     if 'model_name' in request.json:
-        interface = interface_manager.get_by_name(size_string, request.json['model_name'])
+        interface = interface_manager.get_by_name(request.json['model_name'])
     else:
         interface = interface_manager.get_by_size(size_string)
 
@@ -70,18 +70,16 @@ def common_request(request):
     image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
     if not image_batch:
-        logger.error('[{}] - Size[{}] - Type[{}] - Site[{}] - Response[{}] - {} ms'.format(
-            interface.name, size_string, request.json['model_type'], request.json['model_site'], response,
+        logger.error('[{}] - Size[{}] - Name[{}] - Response[{}] - {} ms'.format(
+            interface.name, size_string, request.json.get('model_name'), response,
             (time.time() - start_time) * 1000)
         )
         return json(response)
 
     result = interface.predict_batch(image_batch, split_char)
-    logger.info('[{}] - Size[{}] - Type[{}] - Site[{}] - Predict Result[{}] - {} ms'.format(
+    logger.info('[{}] - Size[{}] - Predict Result[{}] - {} ms'.format(
         interface.name,
         size_string,
-        request.json.get('model_type'),
-        request.json.get('model_site'),
         result,
         (time.time() - start_time) * 1000
     ))

@@ -186,7 +186,6 @@ class ServiceHandler(BaseHandler):
         response = {
             "total": interface_manager.total,
             "online": interface_manager.online_names,
-            "support": interface_manager.support_sites,
             "invalid": interface_manager.invalid_group
         }
         return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
