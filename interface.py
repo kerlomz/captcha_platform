@@ -83,6 +83,7 @@ class InterfaceManager(object):
     def get_by_name(self, key: str, return_default=True):
         for interface in self.group:
             if interface.name == key:
+
                 return interface
         return self.default if return_default else None
 
@@ -104,11 +105,6 @@ class InterfaceManager(object):
     @property
     def online_names(self):
         return [i.name for i in self.group]
-
-    @property
-    def support_sites(self):
-        support = [i.model_site for i in self.group]
-        return [j for i in support for j in i]
 
     def set_default(self, interface: Interface):
         if not interface:
