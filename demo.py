@@ -19,17 +19,18 @@ from constants import ServerType
 # DEFAULT_HOST = "120.79.233.49"
 # DEFAULT_HOST = "47.52.203.228"
 DEFAULT_HOST = "192.168.50.152"
+# DEFAULT_HOST = "127.0.0.1"
 
 
 def _image(_path, model_type=None, model_site=None, need_color=None):
     with open(_path, "rb") as f:
         img_bytes = f.read()
-        data_stream = io.BytesIO(img_bytes)
-        pil_image = PilImage.open(data_stream)
+        # data_stream = io.BytesIO(img_bytes)
+        # pil_image = PilImage.open(data_stream)
         # size = pil_image.size
-        im = np.array(pil_image)
+        # im = np.array(pil_image)
         # im = im[3:size[1] - 3, 3:size[0] - 3]
-        img_bytes = bytearray(cv2.imencode('.png', im)[1])
+        # img_bytes = bytearray(cv2.imencode('.png', im)[1])
 
     b64 = base64.b64encode(img_bytes).decode()
     return {
@@ -93,15 +94,17 @@ class Auth(object):
 
 
 class NoAuth(object):
-    def __init__(self, host: str, server_type: ServerType, port=None):
-        self._url = 'http://{}:{}/captcha/v1'.format(host, port if port else server_type)
+    def __init__(self, host: str, server_type: ServerType, port=None, url=None):
+        self._url = 'http://{}:{}/captcha/v3'.format(host, port if port else server_type)
+        self._url = self._url if not url else url
         self.true_count = 0
         self.total_count = 0
 
     def request(self, params):
         import json
         print(json.dumps(params))
-        return post(self._url, json=params).json()
+        return post(self._url, data=base64.b64decode(params.get("image").encode())).json()
+        # return post(self._url, json=params).json()
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():
@@ -238,11 +241,11 @@ if __name__ == '__main__':
     # pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    path = r"/mnt/c/Users/kerlomz/Desktop/Newfolder"
+    path = r"C:\Users\kerlomz\Desktop\New folder (2)"
     path_list = os.listdir(path)
     import random
 
-    # random.shuffle(path_list)
+    random.shuffle(path_list)
     print(path_list)
     batch = {
         _path.split('_')[0].lower(): _image(
@@ -255,7 +258,7 @@ if __name__ == '__main__':
         if i < 10000
     }
     print(batch)
-    NoAuth(DEFAULT_HOST, ServerType.TORNADO, port=19952).local_iter(batch)
+    NoAuth(DEFAULT_HOST, ServerType.TORNADO, port=19982).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     # GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)

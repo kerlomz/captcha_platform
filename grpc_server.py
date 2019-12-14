@@ -48,7 +48,6 @@ class Predict(grpc_pb2_grpc.PredictServicer):
         if request.need_color:
             bytes_batch = [color_extract.separate_color(_, color_map[request.need_color]) for _ in bytes_batch]
 
-        # bytes_batch =
         image_batch, status = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
 
         if not image_batch:

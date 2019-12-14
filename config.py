@@ -180,6 +180,9 @@ class ModelConfig(Model):
         self.horizontal_stitching: bool = self.field_root.get("HorizontalStitching")
         self.output_split = self.field_root.get('OutputSplit')
         self.output_split = self.output_split if self.output_split else ""
+        self.corp_params = self.field_root.get('CorpParams')
+        self.output_coord = self.field_root.get('OutputCoord')
+        self.batch_model = self.field_root.get('BatchModel')
 
         """COMPILE_MODEL"""
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))

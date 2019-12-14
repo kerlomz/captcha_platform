@@ -4,6 +4,7 @@
 import os
 import time
 import json
+import numpy as np
 import asyncio
 import optparse
 import threading
@@ -99,6 +100,7 @@ class NoAuthHandler(BaseHandler):
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
+        auxiliary_result = None
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
@@ -115,8 +117,23 @@ class NoAuthHandler(BaseHandler):
 
         if need_color:
             bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+        if interface.model_conf.corp_params:
+            bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+        if interface.model_conf.batch_model:
+            auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
+            auxiliary_name = list(interface.model_conf.batch_model.values())[0]
+            auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
+            auxiliary_image_batch, response = ImageUtils.get_image_batch(auxiliary_interface.model_conf, bytes_batch)
+            auxiliary_result = yield self.predict(
+                auxiliary_interface,
+                auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
+                output_split,
+                size_string,
+                start_time
+            )
+            image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
 
         if not image_batch:
             logger.error('[{} {}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
@@ -125,6 +142,14 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
         response['message'] = yield self.predict(interface, image_batch, output_split, size_string, start_time)
+
+        if interface.model_conf.corp_params and interface.model_conf.output_coord:
+            final_result = auxiliary_result + "," + response['message'] if auxiliary_result else response['message']
+            response['message'] = corp_to_multi.get_coordinate(
+                label=final_result,
+                param_group=interface.model_conf.corp_params,
+                title_index=[0]
+            )
         return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
