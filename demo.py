@@ -95,7 +95,7 @@ class Auth(object):
 
 class NoAuth(object):
     def __init__(self, host: str, server_type: ServerType, port=None, url=None):
-        self._url = 'http://{}:{}/captcha/v3'.format(host, port if port else server_type)
+        self._url = 'http://{}:{}/captcha/v1'.format(host, port if port else server_type)
         self._url = self._url if not url else url
         self.true_count = 0
         self.total_count = 0
@@ -103,8 +103,8 @@ class NoAuth(object):
     def request(self, params):
         import json
         print(json.dumps(params))
-        return post(self._url, data=base64.b64decode(params.get("image").encode())).json()
-        # return post(self._url, json=params).json()
+        # return post(self._url, data=base64.b64decode(params.get("image").encode())).json()
+        return post(self._url, json=params).json()
 
     def local_iter(self, image_list: dict):
         for k, v in image_list.items():

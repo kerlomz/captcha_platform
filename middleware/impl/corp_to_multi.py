@@ -29,7 +29,8 @@ def coord_calc(param, is_range=True, is_integer=True):
 
 def parse_multi_img(image_bytes, param_group):
     img_bytes = image_bytes[0]
-    image_arr = np.array(Pil_Image.open(io.BytesIO(img_bytes)))
+    # image_arr = np.array(Pil_Image.open(io.BytesIO(img_bytes)))
+    image_arr = np.fromstring(img_bytes, np.uint8)
     image_arr = image_arr.swapaxes(0, 1)
     group = []
     for p in param_group:
