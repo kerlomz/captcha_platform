@@ -23,9 +23,13 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 class Predict(grpc_pb2_grpc.PredictServicer):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.image_utils = ImageUtils(system_config)
+
     def predict(self, request, context):
         start_time = time.time()
-        bytes_batch, status = ImageUtils.get_bytes_batch(request.image)
+        bytes_batch, status = self.image_utils.get_bytes_batch(request.image)
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')

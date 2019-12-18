@@ -135,6 +135,8 @@ class ModelConfig(Model):
     def __init__(self, conf: Config, model_conf_path: str):
         super().__init__(conf=conf, model_conf_path=model_conf_path)
 
+        self.conf = conf
+
         """MODEL"""
         self.model_root: dict = self.model_conf['Model']
         self.model_name: str = self.model_root.get('ModelName')

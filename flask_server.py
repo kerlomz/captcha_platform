@@ -34,6 +34,7 @@ route_map = {i['Class']: i['Route'] for i in system_config.route_map}
 sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 logger = system_config.logger
 interface_manager = InterfaceManager()
+image_utils = ImageUtils(system_config)
 
 
 @app.after_request
@@ -90,7 +91,7 @@ def common_request():
         logger.info('There is currently no model deployment and services are not available.')
         return json.dumps({"message": "", "success": False, "code": -999})
 
-    bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
+    bytes_batch, response = image_utils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:
         logger.error('Name[{}] - Response[{}] - {} ms'.format(

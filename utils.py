@@ -16,7 +16,7 @@ import tensorflow as tf
 from PIL import Image as PIL_Image
 from constants import Response, SystemConfig
 from pretreatment import preprocessing
-from config import ModelConfig
+from config import ModelConfig, Config
 
 
 class Arithmetic(object):
@@ -82,21 +82,24 @@ class PathUtils(object):
 
 class ImageUtils(object):
 
-    def __init__(self, model: ModelConfig):
-        self.model = model
+    def __init__(self, conf: Config):
+        self.conf = conf
 
-    @staticmethod
-    def get_bytes_batch(base64_or_bytes):
+    def get_bytes_batch(self, base64_or_bytes):
         response = Response()
         try:
             if isinstance(base64_or_bytes, bytes):
-                bytes_batch = [base64_or_bytes]
+                if self.conf.split_flag in base64_or_bytes:
+                    bytes_batch = base64_or_bytes.split(self.conf.split_flag)
+                else:
+                    bytes_batch = [base64_or_bytes]
             elif isinstance(base64_or_bytes, list):
                 bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
                 if not bytes_batch:
                     bytes_batch = [base64.b64decode(i) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
-                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(SystemConfig.split_flag)
+                bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(self.conf.split_flag)
+
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]

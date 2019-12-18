@@ -17,6 +17,19 @@ from event_loop import event_loop
 
 app = Sanic()
 sign = Signature(ServerType.SANIC)
+parser = optparse.OptionParser()
+
+conf_path = 'config.yaml'
+model_path = 'model'
+graph_path = 'graph'
+
+system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
+logger = system_config.logger
+interface_manager = InterfaceManager()
+threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
+
+image_utils = ImageUtils(system_config)
 
 
 @app.route('/captcha/auth/v2', methods=['POST'])
@@ -88,22 +101,13 @@ def common_request(request):
 
 
 if __name__ == "__main__":
-    parser = optparse.OptionParser()
+
     parser.add_option('-p', '--port', type="int", default=19953, dest="port")
-    parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
-    parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
-    parser.add_option('-g', '--graph_path', type="str", default='graph', dest="graph_path")
+
     opt, args = parser.parse_args()
     server_port = opt.port
-    conf_path = opt.config
-    model_path = opt.model_path
-    graph_path = opt.graph_path
 
-    system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
-    sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
-    logger = system_config.logger
-    interface_manager = InterfaceManager()
-    threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
+
 
     server_host = "0.0.0.0"
 

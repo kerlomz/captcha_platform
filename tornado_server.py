@@ -36,6 +36,7 @@ class BaseHandler(RequestHandler):
         super().__init__(application, request, **kwargs)
         self.exception = Response()
         self.executor = ThreadPoolExecutor(workers)
+        self.image_utils = ImageUtils(system_config)
 
     def data_received(self, chunk):
         pass
@@ -92,7 +93,7 @@ class NoAuthHandler(BaseHandler):
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode({"message": "", "success": False, "code": -999}))
-        bytes_batch, response = ImageUtils.get_bytes_batch(data['image'])
+        bytes_batch, response = self.image_utils.get_bytes_batch(data['image'])
 
         if not bytes_batch:
             logger.error('[{} {}] | - Response[{}] - {} ms'.format(
@@ -141,6 +142,7 @@ class NoAuthHandler(BaseHandler):
                 round((time.time() - start_time) * 1000))
             )
             return self.finish(json_encode(response))
+
         response['message'] = yield self.predict(interface, image_batch, output_split, size_string, start_time)
 
         if interface.model_conf.corp_params and interface.model_conf.output_coord:
@@ -169,7 +171,7 @@ class SimpleHandler(BaseHandler):
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode({"message": "", "success": False, "code": -999}))
 
-        bytes_batch, response = ImageUtils.get_bytes_batch(self.request.body)
+        bytes_batch, response = self.image_utils.get_bytes_batch(self.request.body)
 
         if not bytes_batch:
             logger.error('Response[{}] - {} ms'.format(
