@@ -39,8 +39,10 @@ def parse_multi_img(image_bytes, param_group):
         pos_ranges = coord_calc(p, True, True)
         for pos_range in pos_ranges:
             corp_arr = image_arr[pos_range[0][0]: pos_range[0][1], pos_range[1][0]: pos_range[1][1]]
-            group.append(corp_arr)
-    return [bytes(bytearray(cv2.imencode('.png', im.swapaxes(0, 1))[1])) for im in group]
+            corp_arr = cv2.imencode('.png', np.swapaxes(corp_arr, 0, 1))[1]
+            corp_bytes = bytes(bytearray(corp_arr))
+            group.append(corp_bytes)
+    return group
 
 
 def get_coordinate(label: str, param_group, title_index=None):
