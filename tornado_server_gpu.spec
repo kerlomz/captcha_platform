@@ -37,7 +37,7 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='app')
+               name='captcha_platform_tornado_gpu')
 
 
 

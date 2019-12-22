@@ -22,7 +22,7 @@ DEFAULT_HOST = "192.168.50.152"
 # DEFAULT_HOST = "127.0.0.1"
 
 
-def _image(_path, model_type=None, model_site=None, need_color=None):
+def _image(_path, model_type=None, model_site=None, need_color=None, fpath=None):
     with open(_path, "rb") as f:
         img_bytes = f.read()
         # data_stream = io.BytesIO(img_bytes)
@@ -38,6 +38,7 @@ def _image(_path, model_type=None, model_site=None, need_color=None):
         'model_type': model_type,
         'model_site': model_site,
         'need_color': need_color,
+        'path': fpath
     }
 
 
@@ -102,7 +103,9 @@ class NoAuth(object):
 
     def request(self, params):
         import json
-        print(json.dumps(params))
+        # print(params)
+        # print(params['fpath'])
+        # print(json.dumps(params))
         # return post(self._url, data=base64.b64decode(params.get("image").encode())).json()
         return post(self._url, json=params).json()
 
@@ -114,8 +117,8 @@ class NoAuth(object):
                 if _true:
                     self.true_count += 1
                 self.total_count += 1
-                print('result: {}, label: {}, flag: {}, acc_rate: {}'.format(
-                    code, k, _true, self.true_count / self.total_count
+                print('result: {}, label: {}, flag: {}, acc_rate: {}, {}'.format(
+                    code, k, _true, self.true_count / self.total_count, v.get('path')
                 ))
             except Exception as e:
                 print(e)
@@ -241,11 +244,11 @@ if __name__ == '__main__':
     # pass
 
     # API by gRPC - The fastest way, Local batch version, only for self testing.
-    path = r"C:\Users\kerlomz\Desktop\New folder (2)"
+    path = r"C:\Users\kerlomz\Desktop\New folder (6)"
     path_list = os.listdir(path)
     import random
 
-    random.shuffle(path_list)
+    # random.shuffle(path_list)
     print(path_list)
     batch = {
         _path.split('_')[0].lower(): _image(
@@ -253,12 +256,13 @@ if __name__ == '__main__':
             model_type=None,
             model_site=None,
             need_color=None,
+            fpath=_path
         )
         for i, _path in enumerate(path_list)
         if i < 10000
     }
     print(batch)
-    NoAuth(DEFAULT_HOST, ServerType.TORNADO, port=19982).local_iter(batch)
+    NoAuth(DEFAULT_HOST, ServerType.TORNADO, port=19952).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.FLASK).local_iter(batch)
     # NoAuth(DEFAULT_HOST, ServerType.SANIC).local_iter(batch)
     # GoogleRPC(DEFAULT_HOST).local_iter(batch, model_site=None, model_type=None)

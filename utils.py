@@ -17,6 +17,7 @@ from PIL import Image as PIL_Image
 from constants import Response, SystemConfig
 from pretreatment import preprocessing
 from config import ModelConfig, Config
+from middleware.impl.gif_frames import concat_frames, blend_frame
 
 
 class Arithmetic(object):
@@ -120,16 +121,29 @@ class ImageUtils(object):
             rgb = pil_image.split()
             size = pil_image.size
 
-            if len(rgb) > 3 and model.replace_transparent:
+            gif_handle = model.pre_concat_frames != -1 or model.pre_blend_frames != -1
+
+            if len(rgb) > 3 and model.pre_replace_transparent and gif_handle:
                 background = PIL_Image.new('RGB', pil_image.size, (255, 255, 255))
                 background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
                 pil_image = background
 
-            if model.image_channel == 1:
-                pil_image = pil_image.convert('L')
+            if model.pre_concat_frames != -1:
+                im = concat_frames(pil_image, model.pre_concat_frames)
+            elif model.pre_blend_frames != -1:
+                im = blend_frame(pil_image, model.pre_blend_frames)
+            else:
+                im = np.array(pil_image)
 
-            im = np.asarray(pil_image)
-            if model.horizontal_stitching:
+            if model.image_channel == 1 and len(im.shape) == 3:
+                im = im.mean(axis=2).astype(np.float32)
+
+            im = preprocessing(
+                image=im,
+                binaryzation=model.pre_binaryzation,
+            )
+
+            if model.pre_horizontal_stitching:
                 up_slice = im[0: int(size[1] / 2), 0: size[0]]
                 down_slice = im[int(size[1] / 2): size[1], 0: size[0]]
                 im = np.concatenate((up_slice, down_slice), axis=1)

@@ -178,13 +178,19 @@ class ModelConfig(Model):
         self.image_width: int = self.field_root.get('ImageWidth')
         self.image_height: int = self.field_root.get('ImageHeight')
         self.resize: list = self.field_root.get('Resize')
-        self.replace_transparent: bool = self.field_root.get("ReplaceTransparent")
-        self.horizontal_stitching: bool = self.field_root.get("HorizontalStitching")
         self.output_split = self.field_root.get('OutputSplit')
         self.output_split = self.output_split if self.output_split else ""
         self.corp_params = self.field_root.get('CorpParams')
         self.output_coord = self.field_root.get('OutputCoord')
         self.batch_model = self.field_root.get('BatchModel')
+
+        """PRETREATMENT"""
+        self.pretreatment_root = self.model_conf.get('Pretreatment')
+        self.pre_binaryzation = self.get_var(self.pretreatment_root, 'Binaryzation', -1)
+        self.pre_replace_transparent = self.get_var(self.pretreatment_root, 'ReplaceTransparent', True)
+        self.pre_horizontal_stitching = self.get_var(self.pretreatment_root, 'HorizontalStitching', False)
+        self.pre_concat_frames = self.get_var(self.pretreatment_root, 'ConcatFrames', -1)
+        self.pre_blend_frames = self.get_var(self.pretreatment_root, 'BlendFrames', -1)
 
         """COMPILE_MODEL"""
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
@@ -207,6 +213,12 @@ class ModelConfig(Model):
 
     def size_match(self, size_str):
         return size_str == self.size_string
+
+    @staticmethod
+    def get_var(src: dict, name: str, default=None):
+        if not src:
+            return default
+        return src.get(name)
 
     @property
     def size_string(self):
