@@ -12,6 +12,6 @@ requests>=2.18.4
 pyyaml>=3.13
 tornado>=5.1.1
 watchdog==0.9.0
-pyinstaller>3.4
+pyinstaller>=3.5
 sanic
 paramiko
