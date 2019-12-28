@@ -26,5 +26,17 @@ def preprocessing(image, binaryzation=-1):
     return pretreatment.get()
 
 
+def preprocessing_by_func(exec_map, key, src_arr):
+    if not exec_map:
+        return src_arr
+    target_arr = cv2.cvtColor(src_arr, cv2.COLOR_RGB2BGR)
+    for sentence in exec_map.get(key):
+        if sentence.startswith("@@"):
+            target_arr = eval(sentence[2:])
+        elif sentence.startswith("$$"):
+            exec(sentence[2:])
+    return cv2.cvtColor(target_arr, cv2.COLOR_BGR2RGB)
+
+
 if __name__ == '__main__':
     pass

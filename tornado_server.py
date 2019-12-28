@@ -89,6 +89,7 @@ class NoAuthHandler(BaseHandler):
         model_name = ParamUtils.filter(data.get('model_name'))
         output_split = ParamUtils.filter(data.get('output_split'))
         need_color = ParamUtils.filter(data.get('need_color'))
+        param_key = ParamUtils.filter(data.get('param_key'))
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
@@ -121,12 +122,16 @@ class NoAuthHandler(BaseHandler):
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
         if interface.model_conf.batch_model:
             auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
             auxiliary_name = list(interface.model_conf.batch_model.values())[0]
             auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
-            auxiliary_image_batch, response = ImageUtils.get_image_batch(auxiliary_interface.model_conf, bytes_batch)
+            auxiliary_image_batch, response = ImageUtils.get_image_batch(
+                auxiliary_interface.model_conf,
+                bytes_batch,
+                param_key=param_key
+            )
             auxiliary_result = yield self.predict(
                 auxiliary_interface,
                 auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
@@ -189,7 +194,7 @@ class SimpleHandler(BaseHandler):
             logger.info('Service is not ready!')
             return self.finish(json_encode({"message": "", "success": False, "code": 999}))
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch)
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=None)
 
         if not image_batch:
             logger.error('[{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
@@ -243,7 +248,7 @@ def make_app(route: list):
 if __name__ == "__main__":
 
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
+    parser.add_option('-p', '--port', type="int", default=19972, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
     parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")

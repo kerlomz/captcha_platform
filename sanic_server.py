@@ -57,7 +57,7 @@ def common_request(request):
         logger.info('There is currently no model deployment and services are not available.')
         return json({"message": "", "success": False, "code": -999})
 
-    bytes_batch, response = ImageUtils.get_bytes_batch(request.json['image'])
+    bytes_batch, response = image_utils.get_bytes_batch(request.json['image'])
 
     if not bytes_batch:
         logger.error('Type[{}] - Site[{}] - Response[{}] - {} ms'.format(

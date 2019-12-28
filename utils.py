@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image as PIL_Image
 from constants import Response, SystemConfig
-from pretreatment import preprocessing
+from pretreatment import preprocessing, preprocessing_by_func
 from config import ModelConfig, Config
 from middleware.impl.gif_frames import concat_frames, blend_frame
 
@@ -109,7 +109,7 @@ class ImageUtils(object):
         return bytes_batch, response.SUCCESS
 
     @staticmethod
-    def get_image_batch(model: ModelConfig, bytes_batch):
+    def get_image_batch(model: ModelConfig, bytes_batch, param_key=None):
         # Note that there are two return objects here.
         # 1.image_batch, 2.response
 
@@ -133,10 +133,16 @@ class ImageUtils(object):
             elif model.pre_blend_frames != -1:
                 im = blend_frame(pil_image, model.pre_blend_frames)
             else:
-                im = np.array(pil_image)
+                im = np.asarray(pil_image)
 
             if model.image_channel == 1 and len(im.shape) == 3:
                 im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
+
+            im = preprocessing_by_func(
+                exec_map=model.exec_map,
+                key=param_key,
+                src_arr=im
+            )
 
             im = preprocessing(
                 image=im,
@@ -166,12 +172,6 @@ class ImageUtils(object):
         except ValueError as _e:
             print(_e)
             return None, response.IMAGE_SIZE_NOT_MATCH_GRAPH
-
-    @staticmethod
-    def pil_image(image_bytes):
-        data_stream = io.BytesIO(image_bytes)
-        pil_image = PIL_Image.open(data_stream).convert('RGB')
-        return pil_image
 
     @staticmethod
     def size_of_image(image_bytes: bytes):

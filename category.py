@@ -184,7 +184,9 @@ CHINESE_3500 = [
     '鲸', '瘾', '瘸', '糙', '燎', '濒', '憾', '懈', '窿', '缰', '壕', '藐', '檬', '檐', '檩', '檀', '礁', '磷', '了', '瞬',
     '瞳', '瞪', '曙', '蹋', '蟋', '蟀', '嚎', '赡', '镣', '魏', '簇', '儡', '徽', '爵', '朦', '臊', '鳄', '糜', '癌', '懦',
     '豁', '臀', '藕', '藤', '瞻', '嚣', '鳍', '癞', '瀑', '襟', '璧', '戳', '攒', '孽', '蘑', '藻', '鳖', '蹭', '蹬', '簸',
-    '簿', '蟹', '靡', '癣', '羹', '鬓', '攘', '蠕', '巍', '鳞', '糯', '譬', '霹', '躏', '髓', '蘸', '镶', '瓤', '矗', '圳']
+    '簿', '蟹', '靡', '癣', '羹', '鬓', '攘', '蠕', '巍', '鳞', '糯', '譬', '霹', '躏', '髓', '蘸', '镶', '瓤', '矗', '圳',
+    '珏', '蕙', '旻', '涅', '攸', '嘛', '醪', '缪', '噗', '瞨', '靳', '帷', '徨',
+]
 
 FLOAT = ['.']
 
@@ -197,10 +199,9 @@ SIMPLE_CATEGORY_MODEL = dict(
     ALPHABET_UPPER=ALPHA_UPPER,
     ALPHABET=ALPHA_LOWER + ALPHA_UPPER,
     ARITHMETIC=NUMBER + ARITHMETIC,
-    ALPHANUMERIC_LOWER_MIX_ARITHMETIC=NUMBER + ALPHA_LOWER + ARITHMETIC,
     FLOAT=NUMBER + FLOAT,
-    CHINESE_3500=CHINESE_3500,
-    ALPHANUMERIC_LOWER_MIX_CHINESE_3500=NUMBER + ALPHA_LOWER + CHINESE_3500
+    CHS_3500=CHINESE_3500,
+    ALPHANUMERIC_MIX_CHS_3500_LOWER=NUMBER + ALPHA_LOWER + CHINESE_3500
 )
 
 
