@@ -26,7 +26,7 @@ class Version(Enum):
 
 if __name__ == '__main__':
 
-    ver = Version.GPU
+    ver = Version.CPU
     upload = False
     server_ip = ""
     username = ""

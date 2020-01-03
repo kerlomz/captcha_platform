@@ -12,6 +12,7 @@ import tornado.ioloop
 import tornado.log
 import tornado.gen
 import tornado.httpserver
+import tornado.options
 from tornado.web import RequestHandler
 from constants import Response
 from json.decoder import JSONDecodeError
@@ -25,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from middleware import *
 from event_loop import event_loop
 
+tornado.options.define('request_count', default=dict(), type=dict)
 sign = Signature(ServerType.TORNADO)
 arithmetic = Arithmetic()
 semaphore = asyncio.Semaphore(500)
@@ -66,18 +68,26 @@ class BaseHandler(RequestHandler):
 class NoAuthHandler(BaseHandler):
 
     @run_on_executor
-    def predict(self, interface: Interface, image_batch, split_char, size_string, start_time):
+    def predict(self, interface: Interface, image_batch, split_char, size_string, start_time, log_params, request_count):
         result = interface.predict_batch(image_batch, split_char)
         if interface.model_category == 'ARITHMETIC':
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))
-        logger.info('[{} {}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
-            self.request.remote_ip, self.request.uri, interface.name, size_string, result,
+        logger.info('[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
+            self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params, result,
             round((time.time() - start_time) * 1000))
         )
 
         return result
+
+    @property
+    def request_incr(self):
+        if self.request.remote_ip not in tornado.options.options.request_count:
+            tornado.options.options.request_count[self.request.remote_ip] = 1
+        else:
+            tornado.options.options.request_count[self.request.remote_ip] += 1
+        return tornado.options.options.request_count[self.request.remote_ip]
 
     @tornado.gen.coroutine
     def post(self):
@@ -90,6 +100,11 @@ class NoAuthHandler(BaseHandler):
         output_split = ParamUtils.filter(data.get('output_split'))
         need_color = ParamUtils.filter(data.get('need_color'))
         param_key = ParamUtils.filter(data.get('param_key'))
+
+        request_incr = self.request_incr
+        request_count = " - Count[{}]".format(request_incr)
+        log_params = " - ParamKey[{}]".format(param_key) if param_key else ""
+        log_params += " - NeedColor[{}]".format(need_color) if need_color else ""
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
@@ -107,6 +122,16 @@ class NoAuthHandler(BaseHandler):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
+
+        if request_limit != -1 and request_incr > request_limit:
+            logger.info('[{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                "Maximum number of requests exceeded",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode({
+                "message": "The maximum number of requests has been exceeded", "success": False, "code": -444
+            }))
         if 'model_name' in data and data['model_name']:
             interface = interface_manager.get_by_name(model_name)
         else:
@@ -148,7 +173,9 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
 
-        response['message'] = yield self.predict(interface, image_batch, output_split, size_string, start_time)
+        response['message'] = yield self.predict(
+            interface, image_batch, output_split, size_string, start_time, log_params, request_count
+        )
 
         if interface.model_conf.corp_params and interface.model_conf.output_coord:
             final_result = auxiliary_result + "," + response['message'] if auxiliary_result else response['message']
@@ -246,9 +273,10 @@ def make_app(route: list):
 
 
 if __name__ == "__main__":
-
+    os.system("chcp 65001")
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19972, dest="port")
+    parser.add_option('-r', '--request_limit', type="int", default=-1, dest="request_limit")
+    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
     parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
@@ -258,6 +286,7 @@ if __name__ == "__main__":
     conf_path = opt.config
     model_path = opt.model_path
     graph_path = opt.graph_path
+    request_limit = opt.request_limit
     workers = opt.workers
 
     system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
