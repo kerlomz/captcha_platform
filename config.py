@@ -197,7 +197,7 @@ class ModelConfig(Model):
         self.pre_horizontal_stitching = self.get_var(self.pretreatment_root, 'HorizontalStitching', False)
         self.pre_concat_frames = self.get_var(self.pretreatment_root, 'ConcatFrames', -1)
         self.pre_blend_frames = self.get_var(self.pretreatment_root, 'BlendFrames', -1)
-        self.exec_map = self.pretreatment_root.get('ExecuteMap')
+        self.exec_map = self.get_var(self.pretreatment_root, 'ExecuteMap', None)
 
         """COMPILE_MODEL"""
         self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
