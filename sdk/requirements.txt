@@ -1,0 +1,6 @@
+tensorflow==1.14
+numpy
+pillow
+opencv-python==3.4.5.20
+pyyaml>=3.13
+onnxruntime

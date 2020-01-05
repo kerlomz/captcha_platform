@@ -9,8 +9,8 @@ import binascii
 import numpy as np
 import PIL.Image as PIL_Image
 from enum import Enum, unique
-import tensorflow as tf
-from tensorflow.python.framework.errors_impl import NotFoundError
+import onnxruntime as ort
+
 
 SPACE_TOKEN = ['']
 NUMBER = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -262,8 +262,8 @@ class ModelConfig(object):
             return yaml.load(sys_stream, Loader=yaml.SafeLoader)
 
     def __init__(self, model_conf_path):
-        self.model_path = "./"
-        self.graph_path = self.current_path = os.path.join(os.path.dirname(__file__), self.model_path)
+        self.model_path = model_conf_path
+        self.graph_path = os.path.dirname(self.model_path)
         self.model_conf_path = model_conf_path
         self.model_conf_demo = 'model_demo.yaml'
 
@@ -324,7 +324,7 @@ class ModelConfig(object):
         self.exec_map = self.pretreatment_root.get('ExecuteMap')
 
         """COMPILE_MODEL"""
-        self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
+        self.compile_model_path = os.path.join(self.graph_path, '{}.onnx'.format(self.model_name))
         if not os.path.exists(self.compile_model_path):
             if not os.path.exists(self.graph_path):
                 os.makedirs(self.graph_path)
@@ -363,54 +363,26 @@ class GraphSession(object):
         self.model_name = self.model_conf.model_name
         self.graph_name = self.model_conf.model_name
         self.version = self.model_conf.model_version
-        self.graph = tf.Graph()
-        self.sess = tf.Session(
-            graph=self.graph,
-            config=tf.ConfigProto(
-
-                # allow_soft_placement=True,
-                # log_device_placement=True,
-                gpu_options=tf.GPUOptions(
-                    # allocator_type='BFC',
-                    allow_growth=True,  # it will cause fragmentation.
-                    # per_process_gpu_memory_fraction=self.model_conf.device_usage
-                    per_process_gpu_memory_fraction=0.1
-                )
-            )
-        )
-        self.graph_def = self.graph.as_graph_def()
-        self.loaded = self.load_model()
+        # self.graph = tf.Graph()
+        self.sess = ort.InferenceSession(self.model_conf.compile_model_path)
+        # self.graph_def = self.graph.as_graph_def()
+        # self.loaded = self.load_model()
 
     def load_model(self):
-        # Here is for debugging, positioning error source use.
-        # with self.graph.as_default():
-        #     saver = tf.train.import_meta_graph('graph/***.meta')
-        #     saver.restore(self.sess, tf.train.latest_checkpoint('graph'))
         if not self.model_conf.model_exists:
-            self.destroy()
-            return False
+            return None
         try:
-            with tf.io.gfile.GFile(self.model_conf.compile_model_path, "rb") as f:
-                graph_def_file = f.read()
-            self.graph_def.ParseFromString(graph_def_file)
-            with self.graph.as_default():
-                self.sess.run(tf.global_variables_initializer())
-                _ = tf.import_graph_def(self.graph_def, name="")
+            session = ort.InferenceSession(self.model_conf.compile_model_path)
 
             print('TensorFlow Session {} Loaded.'.format(self.model_conf.model_name))
-            return True
-        except NotFoundError:
-            print('The system cannot find the model specified.')
-            self.destroy()
-            return False
+            return session
+        except RuntimeError as e:
+            print(e)
+            return None
 
     @property
     def session(self):
         return self.sess
-
-    def destroy(self):
-        self.sess.close()
-        del self.sess
 
 
 class Interface(object):
@@ -422,11 +394,11 @@ class Interface(object):
         self.graph_name = self.graph_sess.graph_name
         self.version = self.graph_sess.version
         self.model_category = self.model_conf.category
-        if self.graph_sess.loaded:
+        if self.graph_sess.sess:
             self.sess = self.graph_sess.session
-            self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
-            self.x = self.sess.graph.get_tensor_by_name('input:0')
-            self.sess.graph.finalize()
+            # self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
+            # self.x = self.sess.graph.get_tensor_by_name('input:0')
+            # self.sess.graph.finalize()
 
     @property
     def name(self):
@@ -436,15 +408,10 @@ class Interface(object):
     def size(self):
         return self.size_str
 
-    def destroy(self):
-        self.graph_sess.destroy()
-
     def predict_batch(self, image_batch, output_split=None):
         predict_text = self.predict_func(
             image_batch,
             self.sess,
-            self.dense_decoded,
-            self.x,
             self.model_conf,
             output_split
         )
@@ -454,16 +421,17 @@ class Interface(object):
     def decode_maps(categories):
         return {index: category for index, category in enumerate(categories, 0)}
 
-    def predict_func(self, image_batch, _sess, dense_decoded, op_input, model: ModelConfig, output_split=None):
-
+    def predict_func(self, image_batch, _sess, model: ModelConfig, output_split=None):
+        if isinstance(image_batch, list):
+            image_batch = np.asarray(image_batch)
         if output_split is None:
             output_split = model.output_split
 
-        dense_decoded_code = _sess.run(dense_decoded, feed_dict={
-            op_input: image_batch,
+        dense_decoded_code = _sess.run(None, input_feed={
+            "input:0": image_batch,
         })
         decoded_expression = []
-        for item in dense_decoded_code:
+        for item in dense_decoded_code[0]:
             expression = ''
 
             for i in item:
@@ -654,7 +622,7 @@ class SDK(object):
 if __name__ == '__main__':
 
     sdk = SDK(r"model.yaml")
-    with open(r"H:\Task\458b5477e6645329086a8c5d2fe1f12d.png", "rb") as f:
+    with open(r"H:\5c6698aff83ba1e1ee4bddd30edb753d.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
         print(sdk.predict(b))
