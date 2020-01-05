@@ -652,9 +652,10 @@ class SDK(object):
 
 
 if __name__ == '__main__':
-
+    import time
     sdk = SDK(r"model.yaml")
     with open(r"H:\5c6698aff83ba1e1ee4bddd30edb753d.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
-        print(sdk.predict(b))
+        t1 = time.time()
+        print(sdk.predict(b), (time.time() - t1)*1000)
