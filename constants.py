@@ -58,6 +58,17 @@ class SystemConfig:
                 "Route": ".*"
             }
         ]
+    default_config = {
+        "System": {
+            "DefaultModel": "default",
+            "SplitFlag": b'\x99\x99\x99\x00\xff\xff\xff\x00\x99\x99\x99'
+        },
+        "RouteMap": default_route,
+        "Security": {
+            "AccessKey": "",
+            "SecretKey": ""
+        }
+    }
 
 
 class ServerType(str):

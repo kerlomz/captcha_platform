@@ -29,7 +29,9 @@ class Config(object):
         self.access_key = None
         self.secret_key = None
         self.default_model = self.sys_cf['System']['DefaultModel']
-        self.split_flag = eval(self.sys_cf['System']['SplitFlag'])
+        self.split_flag = self.sys_cf['System']['SplitFlag']
+        self.split_flag = self.split_flag if isinstance(self.split_flag, bytes) else SystemConfig.split_flag
+
         self.route_map = self.sys_cf.get('RouteMap')
         self.route_map = self.route_map if self.route_map else SystemConfig.default_route
         self.log_path = "logs"
@@ -79,6 +81,10 @@ class Config(object):
 
     @property
     def read_conf(self):
+        if not os.path.exists(self.conf_path):
+            with open(self.conf_path, 'w', encoding="utf-8") as sys_fp:
+                sys_fp.write(yaml.safe_dump(SystemConfig.default_config))
+                return SystemConfig.default_config
         with open(self.conf_path, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
             return yaml.load(sys_stream, Loader=yaml.SafeLoader)
