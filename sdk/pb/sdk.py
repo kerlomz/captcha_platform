@@ -4,6 +4,7 @@
 import io
 import os
 import cv2
+import pickle
 import yaml
 import binascii
 import numpy as np
@@ -257,13 +258,16 @@ class ModelConfig(object):
 
     @property
     def model_conf(self) -> dict:
+        if self.model_content:
+            return self.model_content
         with open(self.model_conf_path, 'r', encoding="utf-8") as sys_fp:
             sys_stream = sys_fp.read()
             return yaml.load(sys_stream, Loader=yaml.SafeLoader)
 
-    def __init__(self, model_conf_path):
+    def __init__(self, model_conf_path=None, model_content=None):
+        self.model_content = model_content
         self.model_path = model_conf_path
-        self.graph_path = os.path.dirname(self.model_path)
+        self.graph_path = os.path.dirname(self.model_path) if model_conf_path else ""
         self.model_conf_path = model_conf_path
         self.model_conf_demo = 'model_demo.yaml'
 
@@ -324,15 +328,19 @@ class ModelConfig(object):
         self.exec_map = self.pretreatment_root.get('ExecuteMap')
 
         """COMPILE_MODEL"""
-        self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
-        if not os.path.exists(self.compile_model_path):
-            if not os.path.exists(self.graph_path):
-                os.makedirs(self.graph_path)
-            raise ValueError(
-                '{} not found, please put the trained model in the current directory.'.format(self.compile_model_path)
-            )
+        if self.graph_path:
+            self.compile_model_path = os.path.join(self.graph_path, '{}.pb'.format(self.model_name))
+            if not os.path.exists(self.compile_model_path):
+                if not os.path.exists(self.graph_path):
+                    os.makedirs(self.graph_path)
+                raise ValueError(
+                    '{} not found, please put the trained model in the current directory.'.format(self.compile_model_path)
+                )
+            else:
+                self.model_exists = True
         else:
-            self.model_exists = True
+            self.model_exists = True if self.model_content else False
+            self.compile_model_path = ""
 
     @staticmethod
     def param_convert(source, param_map: dict, text, code, default=None):
@@ -356,9 +364,56 @@ class ModelConfig(object):
         return "{}x{}".format(self.image_width, self.image_height)
 
 
+class Model(object):
+    model_conf: ModelConfig
+    graph_bytes: object
+
+    def __init__(self, conf_path: str, source_bytes: bytes = None, key=None):
+        if conf_path:
+            self.model_conf = ModelConfig(model_conf_path=conf_path)
+            self.graph_bytes = self.model_conf.compile_model_path
+        if source_bytes:
+            model_conf, self.graph_bytes = self.parse_model(source_bytes, key)
+            self.model_conf = ModelConfig(model_content=model_conf)
+
+    @staticmethod
+    def parse_model(source_bytes: bytes, key=None):
+        split_tag = b'-#||#-'
+
+        if not key:
+            key = [b"_____" + i.encode("utf8") + b"_____" for i in "&coriander"]
+        if isinstance(key, str):
+            key = [b"_____" + i.encode("utf8") + b"_____" for i in key]
+        key_len_int = len(key)
+        model_bytes_list = []
+        graph_bytes_list = []
+        slice_index = source_bytes.index(key[0])
+        split_tag_len = len(split_tag)
+        slice_0 = source_bytes[0: slice_index].split(split_tag)
+        model_slice_len = len(slice_0[1])
+        graph_slice_len = len(slice_0[0])
+        slice_len = split_tag_len + model_slice_len + graph_slice_len
+
+        for i in range(key_len_int - 1):
+            slice_index = source_bytes.index(key[i])
+            print(slice_index, slice_index - slice_len)
+            slices = source_bytes[slice_index - slice_len: slice_index].split(split_tag)
+            model_bytes_list.append(slices[1])
+            graph_bytes_list.append(slices[0])
+        slices = source_bytes.split(key[-2])[1][:-len(key[-1])].split(split_tag)
+
+        model_bytes_list.append(slices[1])
+        graph_bytes_list.append(slices[0])
+        model_bytes = b"".join(model_bytes_list)
+        model_conf: dict = pickle.loads(model_bytes)
+        graph_bytes: bytes = b"".join(graph_bytes_list)
+        return model_conf, graph_bytes
+
+
 class GraphSession(object):
-    def __init__(self, model_conf: ModelConfig):
-        self.model_conf = model_conf
+    def __init__(self, model: Model):
+        self.model = model
+        self.model_conf = model.model_conf
         self.size_str = self.model_conf.size_string
         self.model_name = self.model_conf.model_name
         self.graph_name = self.model_conf.model_name
@@ -390,8 +445,14 @@ class GraphSession(object):
             self.destroy()
             return False
         try:
-            with tf.io.gfile.GFile(self.model_conf.compile_model_path, "rb") as f:
-                graph_def_file = f.read()
+            if self.model.graph_bytes:
+                graph_def_file = self.model.graph_bytes
+
+            else:
+                with tf.io.gfile.GFile(
+                        self.model_conf.compile_model_path, "rb"
+                ) as f:
+                    graph_def_file = f.read()
             self.graph_def.ParseFromString(graph_def_file)
             with self.graph.as_default():
                 self.sess.run(tf.global_variables_initializer())
@@ -634,10 +695,12 @@ class ImageUtils(object):
 
 class SDK(object):
 
-    def __init__(self, conf_path):
-        self.conf_path = conf_path
-        self.model_conf = ModelConfig(self.conf_path)
-        self.graph_session = GraphSession(self.model_conf)
+    def __init__(self, conf_path=None, model_entity=None):
+        if not conf_path and not model_entity:
+            raise ValueError('One of parameters conf_path and model_entity must be filled')
+        self.model = Model(conf_path=conf_path, source_bytes=model_entity)
+        self.model_conf = self.model.model_conf
+        self.graph_session = GraphSession(self.model)
         self.interface = Interface(self.graph_session)
 
     def predict(self, image_bytes, param_key=None):
@@ -652,10 +715,21 @@ class SDK(object):
 
 
 if __name__ == '__main__':
+    # FROM PATH
     import time
-    sdk = SDK(r"model.yaml")
-    with open(r"H:\5c6698aff83ba1e1ee4bddd30edb753d.jpg", "rb") as f:
+    # sdk = SDK(r"model.yaml")
+    # with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
+    #     b = f.read()
+    # for i in [b] * 1000:
+    #     t1 = time.time()
+    #     print(sdk.predict(b), (time.time() - t1)*1000)
+
+    # FROM BYTES
+    with open(r"model.pl", "rb") as f:
+        b = f.read()
+    sdk = SDK(model_entity=b)
+    with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
         t1 = time.time()
-        print(sdk.predict(b), (time.time() - t1)*1000)
+        print(sdk.predict(b), (time.time() - t1) * 1000)
