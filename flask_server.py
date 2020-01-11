@@ -21,8 +21,6 @@ from middleware import *
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
-sign = Signature(ServerType.FLASK)
-_except = Response()
 
 conf_path = 'config.yaml'
 model_path = 'model'
@@ -30,6 +28,8 @@ graph_path = 'graph'
 
 
 system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
+sign = Signature(ServerType.FLASK, system_config)
+_except = Response(system_config.response_def_map)
 route_map = {i['Class']: i['Route'] for i in system_config.route_map}
 sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
 logger = system_config.logger

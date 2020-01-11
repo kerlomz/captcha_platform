@@ -22,8 +22,9 @@ class InvalidUsage(Exception):
 class Signature(object):
     """ api signature authentication """
 
-    def __init__(self, server_type: ServerType):
-        self._except = Response()
+    def __init__(self, server_type: ServerType, conf: Config):
+        self.conf = conf
+        self._except = Response(self.conf.response_def_map)
         self._auth = []
         self._timestamp_expiration = 120
         self.request = None

@@ -27,7 +27,9 @@ from middleware import *
 from event_loop import event_loop
 
 tornado.options.define('request_count', default=dict(), type=dict)
-sign = Signature(ServerType.TORNADO)
+model_path = "model"
+system_config = Config(conf_path="config.yaml", model_path=model_path, graph_path="graph")
+sign = Signature(ServerType.TORNADO, system_config)
 arithmetic = Arithmetic()
 semaphore = asyncio.Semaphore(500)
 
@@ -36,7 +38,7 @@ class BaseHandler(RequestHandler):
 
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
-        self.exception = Response()
+        self.exception = Response(system_config.response_def_map)
         self.executor = ThreadPoolExecutor(workers)
         self.image_utils = ImageUtils(system_config)
 
@@ -67,6 +69,10 @@ class BaseHandler(RequestHandler):
 
 class NoAuthHandler(BaseHandler):
 
+    message_key: str = system_config.response_def_map['Message']
+    status_bool_key = system_config.response_def_map['StatusBool']
+    status_code_key = system_config.response_def_map['StatusCode']
+
     @run_on_executor
     def predict(self, interface: Interface, image_batch, split_char, size_string, start_time, log_params, request_count):
         result = interface.predict_batch(image_batch, split_char)
@@ -93,10 +99,13 @@ class NoAuthHandler(BaseHandler):
     def post(self):
         start_time = time.time()
         data = self.parse_param()
-        if 'image' not in data.keys():
+        request_def_map = system_config.request_def_map
+        input_data_key = request_def_map['InputData']
+        model_name_key = request_def_map['ModelName']
+        if input_data_key not in data.keys():
             raise tornado.web.HTTPError(400)
 
-        model_name = ParamUtils.filter(data.get('model_name'))
+        model_name = ParamUtils.filter(data.get(model_name_key))
         output_split = ParamUtils.filter(data.get('output_split'))
         need_color = ParamUtils.filter(data.get('need_color'))
         param_key = ParamUtils.filter(data.get('param_key'))
@@ -108,8 +117,10 @@ class NoAuthHandler(BaseHandler):
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
-            return self.finish(json_encode({"message": "", "success": False, "code": -999}))
-        bytes_batch, response = self.image_utils.get_bytes_batch(data['image'])
+            return self.finish(json_encode(
+                {self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
+            ))
+        bytes_batch, response = self.image_utils.get_bytes_batch(data[input_data_key])
 
         if not bytes_batch:
             logger.error('[{} {}] | - Response[{}] - {} ms'.format(
@@ -130,15 +141,19 @@ class NoAuthHandler(BaseHandler):
                 round((time.time() - start_time) * 1000))
             )
             return self.finish(json_encode({
-                "message": "The maximum number of requests has been exceeded", "success": False, "code": -444
+                self.message_key: "The maximum number of requests has been exceeded",
+                self.status_bool_key: False,
+                self.status_code_key: -444
             }))
-        if 'model_name' in data and data['model_name']:
+        if model_name_key in data and data[model_name_key]:
             interface = interface_manager.get_by_name(model_name)
         else:
             interface = interface_manager.get_by_size(size_string)
         if not interface:
             logger.info('Service is not ready!')
-            return self.finish(json_encode({"message": "", "success": False, "code": 999}))
+            return self.finish(json_encode(
+                {self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
+            ))
 
         output_split = output_split if 'output_split' in data else interface.model_conf.output_split
 
@@ -146,6 +161,19 @@ class NoAuthHandler(BaseHandler):
             bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
+        if interface.model_conf.exec_map and not param_key:
+            logger.info('[{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                "The model is missing the param_key parameter because the model is configured with ExecuteMap.",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode(
+                {
+                    self.message_key: "Missing the parameter [param_key].",
+                    self.status_bool_key: False,
+                    self.status_code_key: 474
+                }
+            ))
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
         if interface.model_conf.batch_model:
@@ -173,13 +201,13 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
 
-        response['message'] = yield self.predict(
+        response[self.message_key] = yield self.predict(
             interface, image_batch, output_split, size_string, start_time, log_params, request_count
         )
 
         if interface.model_conf.corp_params and interface.model_conf.output_coord:
-            final_result = auxiliary_result + "," + response['message'] if auxiliary_result else response['message']
-            response['message'] = corp_to_multi.get_coordinate(
+            final_result = auxiliary_result + "," + response[self.message_key] if auxiliary_result else response[self.message_key]
+            response[self.message_key] = corp_to_multi.get_coordinate(
                 label=final_result,
                 param_group=interface.model_conf.corp_params,
                 title_index=[0]
@@ -196,12 +224,18 @@ class AuthHandler(NoAuthHandler):
 
 class SimpleHandler(BaseHandler):
 
+    message_key: str = system_config.response_def_map['Message']
+    status_bool_key = system_config.response_def_map['StatusBool']
+    status_code_key = system_config.response_def_map['StatusCode']
+
     def post(self):
         start_time = time.time()
 
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
-            return self.finish(json_encode({"message": "", "success": False, "code": -999}))
+            return self.finish(json_encode(
+                {self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
+            ))
 
         bytes_batch, response = self.image_utils.get_bytes_batch(self.request.body)
 
@@ -219,7 +253,9 @@ class SimpleHandler(BaseHandler):
         interface = interface_manager.get_by_size(size_string)
         if not interface:
             logger.info('Service is not ready!')
-            return self.finish(json_encode({"message": "", "success": False, "code": 999}))
+            return self.finish(json_encode(
+                {self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
+            ))
 
         image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=None)
 
@@ -235,7 +271,7 @@ class SimpleHandler(BaseHandler):
         logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
             self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
-        response['message'] = result
+        response[self.message_key] = result
         return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
@@ -278,18 +314,10 @@ if __name__ == "__main__":
     parser.add_option('-r', '--request_limit', type="int", default=-1, dest="request_limit")
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
-    parser.add_option('-c', '--config', type="str", default='./config.yaml', dest="config")
-    parser.add_option('-m', '--model_path', type="str", default='model', dest="model_path")
-    parser.add_option('-g', '--graph_path', type="str", default='graph', dest="graph_path")
     opt, args = parser.parse_args()
     server_port = opt.port
-    conf_path = opt.config
-    model_path = opt.model_path
-    graph_path = opt.graph_path
     request_limit = opt.request_limit
     workers = opt.workers
-
-    system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
     logger = system_config.logger
     tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
