@@ -162,8 +162,8 @@ class NoAuthHandler(BaseHandler):
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
         if interface.model_conf.exec_map and not param_key:
-            logger.info('[{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
-                self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+            logger.info('[{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
+                self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
                 "The model is missing the param_key parameter because the model is configured with ExecuteMap.",
                 round((time.time() - start_time) * 1000))
             )

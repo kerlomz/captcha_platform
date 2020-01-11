@@ -87,7 +87,9 @@ class ImageUtils(object):
         self.conf = conf
 
     def get_bytes_batch(self, base64_or_bytes):
-        response = Response()
+        response = Response(self.conf.response_def_map)
+        b64_filter_s = lambda s: re.sub("data:image/.+?base64,", "", s, 1) if ',' in s else s
+        b64_filter_b = lambda s: re.sub(b"data:image/.+?base64,", b"", s, 1) if b',' in s else s
         try:
             if isinstance(base64_or_bytes, bytes):
                 if self.conf.split_flag in base64_or_bytes:
@@ -95,10 +97,11 @@ class ImageUtils(object):
                 else:
                     bytes_batch = [base64_or_bytes]
             elif isinstance(base64_or_bytes, list):
-                bytes_batch = [base64.b64decode(i.encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
+                bytes_batch = [base64.b64decode(b64_filter_s(i).encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
                 if not bytes_batch:
-                    bytes_batch = [base64.b64decode(i) for i in base64_or_bytes if isinstance(i, bytes)]
+                    bytes_batch = [base64.b64decode(b64_filter_b(i)) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
+                base64_or_bytes = b64_filter_s(base64_or_bytes)
                 bytes_batch = base64.b64decode(base64_or_bytes.encode('utf-8')).split(self.conf.split_flag)
 
         except binascii.Error:
@@ -113,7 +116,7 @@ class ImageUtils(object):
         # Note that there are two return objects here.
         # 1.image_batch, 2.response
 
-        response = Response()
+        response = Response(model.conf.response_def_map)
 
         def load_image(image_bytes):
             data_stream = io.BytesIO(image_bytes)
