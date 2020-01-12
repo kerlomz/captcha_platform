@@ -7,6 +7,7 @@ import socket
 import paramiko
 import platform
 import distutils
+import tensorflow as tf
 from enum import Enum, unique
 from utils import SystemUtils
 
@@ -26,7 +27,8 @@ class Version(Enum):
 
 if __name__ == '__main__':
 
-    ver = Version.CPU
+    ver = Version.GPU if tf.test.gpu_device_name() else Version.CPU
+
     upload = False
     server_ip = ""
     username = ""

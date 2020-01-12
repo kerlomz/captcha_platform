@@ -50,8 +50,14 @@ class Config(object):
 
     def init_logger(self):
         self.logger.setLevel(logging.INFO)
+        
         if not os.path.exists(self.log_path):
             os.makedirs(self.log_path)
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+        if not os.path.exists(self.graph_path):
+            os.makedirs(self.graph_path)
+
         file_handler = TimedRotatingFileHandler(
             '{}/{}.log'.format(self.log_path, "captcha_platform"),
             when="MIDNIGHT",
