@@ -39,6 +39,7 @@ class Config(object):
         self.request_def_map = self.request_def_map if self.request_def_map else SystemConfig.default_config['RequestDef']
         self.response_def_map = self.sys_cf.get('ResponseDef')
         self.response_def_map = self.response_def_map if self.response_def_map else SystemConfig.default_config['ResponseDef']
+        self.save_path = self.sys_cf['System'].get("SavePath")
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
         self.logger = logging.getLogger(self.logger_tag)
