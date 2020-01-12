@@ -723,10 +723,10 @@ if __name__ == '__main__':
     #     print(sdk.predict(b), (time.time() - t1)*1000)
 
     # FROM BYTES
-    with open(r"/mnt/d/Workplace/PycharmProjects/Projects/Deep learning/captcha_trainer/projects/tl-mini-CNNX-1-GRU-H64-CTC-C1/out/graph/tl-mini-CNNX-1-GRU-H64-CTC-C1_9900.pl", "rb") as f:
+    with open(r"model.pl", "rb") as f:
         b = f.read()
     sdk = SDK(model_entity=b)
-    with open(r"/mnt/h/TrainSet/cy_trans_trains/1a1d_1540868881850.jpg", "rb") as f:
+    with open(r"1540868881850.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
         t1 = time.time()
