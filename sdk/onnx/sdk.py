@@ -370,7 +370,7 @@ class Model(object):
     def __init__(self, conf_path: str, source_bytes: bytes = None, key=None):
         if conf_path:
             self.model_conf = ModelConfig(model_conf_path=conf_path)
-            self.graph_bytes = self.model_conf.compile_model_path
+            # self.graph_bytes = self.model_conf.compile_model_path
         if source_bytes:
             model_conf, self.graph_bytes = self.parse_model(source_bytes, key)
             self.model_conf = ModelConfig(model_content=model_conf)
@@ -461,7 +461,7 @@ class Interface(object):
         if output_split is None:
             output_split = model.output_split
 
-        dense_decoded_code = _sess.run(None, input_feed={
+        dense_decoded_code = _sess.run(["dense_decoded:0"], input_feed={
             "input:0": image_batch,
         })
         decoded_expression = []
@@ -667,10 +667,12 @@ if __name__ == '__main__':
     #     print(sdk.predict(b), (time.time() - t1) * 1000)
 
     # FROM BYTES
-    with open(r"model.pl", "rb") as f:
+    with open(r"/mnt/d/Workplace/PycharmProjects/Projects/Deep learning/captcha_trainer/projects/tl-mini-CNNX-1-GRU-H64-CTC-C1/out/graph/tl-mini-CNNX-1-GRU-H64-CTC-C1_9900.pl", "rb") as f:
         b = f.read()
+    # with open("1.py", "w") as f:
+    #     f.write(str(b))
     sdk = SDK(model_entity=b)
-    with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
+    with open(r"/mnt/h/TrainSet/cy_trans_trains/1a1d_1540868881850.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
         t1 = time.time()

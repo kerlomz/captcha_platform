@@ -371,7 +371,7 @@ class Model(object):
     def __init__(self, conf_path: str, source_bytes: bytes = None, key=None):
         if conf_path:
             self.model_conf = ModelConfig(model_conf_path=conf_path)
-            self.graph_bytes = self.model_conf.compile_model_path
+            self.graph_bytes = None
         if source_bytes:
             model_conf, self.graph_bytes = self.parse_model(source_bytes, key)
             self.model_conf = ModelConfig(model_content=model_conf)
@@ -396,7 +396,6 @@ class Model(object):
 
         for i in range(key_len_int - 1):
             slice_index = source_bytes.index(key[i])
-            print(slice_index, slice_index - slice_len)
             slices = source_bytes[slice_index - slice_len: slice_index].split(split_tag)
             model_bytes_list.append(slices[1])
             graph_bytes_list.append(slices[0])
@@ -447,7 +446,6 @@ class GraphSession(object):
         try:
             if self.model.graph_bytes:
                 graph_def_file = self.model.graph_bytes
-
             else:
                 with tf.io.gfile.GFile(
                         self.model_conf.compile_model_path, "rb"
@@ -725,10 +723,10 @@ if __name__ == '__main__':
     #     print(sdk.predict(b), (time.time() - t1)*1000)
 
     # FROM BYTES
-    with open(r"model.pl", "rb") as f:
+    with open(r"/mnt/d/Workplace/PycharmProjects/Projects/Deep learning/captcha_trainer/projects/tl-mini-CNNX-1-GRU-H64-CTC-C1/out/graph/tl-mini-CNNX-1-GRU-H64-CTC-C1_9900.pl", "rb") as f:
         b = f.read()
     sdk = SDK(model_entity=b)
-    with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
+    with open(r"/mnt/h/TrainSet/cy_trans_trains/1a1d_1540868881850.jpg", "rb") as f:
         b = f.read()
     for i in [b] * 1000:
         t1 = time.time()
