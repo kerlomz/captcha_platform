@@ -86,12 +86,11 @@ class NoAuthHandler(BaseHandler):
     status_code_key = system_config.response_def_map['StatusCode']
 
     @staticmethod
-    def save_image(label, image_bytes):
+    def save_image(uid, label, image_bytes):
         if system_config.save_path:
             if not os.path.exists(system_config.save_path):
                 os.makedirs(system_config.save_path)
-            tag = hashlib.md5(image_bytes).hexdigest()
-            save_name = "{}_{}.png".format(label, tag)
+            save_name = "{}_{}.png".format(label, uid)
             with open(os.path.join(system_config.save_path, save_name), "wb") as f:
                 f.write(image_bytes)
 
@@ -232,7 +231,7 @@ class NoAuthHandler(BaseHandler):
             interface, image_batch, output_split, size_string, start_time, log_params, request_count, uid=uid
         )
         response[self.uid_key] = uid
-        self.executor.submit(self.save_image, response[self.message_key], bytes_batch[0])
+        self.executor.submit(self.save_image, uid, response[self.message_key], bytes_batch[0])
         if interface.model_conf.corp_params and interface.model_conf.output_coord:
             final_result = auxiliary_result + "," + response[self.message_key] if auxiliary_result else response[self.message_key]
             response[self.message_key] = corp_to_multi.get_coordinate(
