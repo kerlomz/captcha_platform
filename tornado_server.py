@@ -16,6 +16,7 @@ import tornado.gen
 import tornado.httpserver
 import tornado.options
 from pytz import utc
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.schedulers.background import BackgroundScheduler
 from tornado.web import RequestHandler
 from constants import Response
@@ -338,18 +339,18 @@ def make_app(route: list):
     ])
 
 
-scheduler.add_job(clear_job, 'interval', days=1)
+trigger = IntervalTrigger(seconds=system_config.request_count_interval)
+scheduler.add_job(clear_job, trigger)
 scheduler.start()
 
 if __name__ == "__main__":
     os.system("chcp 65001")
     parser = optparse.OptionParser()
-    parser.add_option('-r', '--request_limit', type="int", default=-1, dest="request_limit")
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     opt, args = parser.parse_args()
     server_port = opt.port
-    request_limit = opt.request_limit
+    request_limit = system_config.request_limit
     workers = opt.workers
     logger = system_config.logger
     tornado.log.enable_pretty_logging(logger=logger)

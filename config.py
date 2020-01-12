@@ -40,6 +40,10 @@ class Config(object):
         self.response_def_map = self.sys_cf.get('ResponseDef')
         self.response_def_map = self.response_def_map if self.response_def_map else SystemConfig.default_config['ResponseDef']
         self.save_path = self.sys_cf['System'].get("SavePath")
+        self.request_count_interval = self.sys_cf['System'].get("RequestCountInterval")
+        self.request_limit = self.sys_cf['System'].get("RequestLimit")
+        self.request_limit = self.request_limit if self.request_limit else -1
+        self.request_count_interval = self.request_count_interval if self.request_count_interval else 60 * 60 * 24
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
         self.logger = logging.getLogger(self.logger_tag)
@@ -50,7 +54,7 @@ class Config(object):
 
     def init_logger(self):
         self.logger.setLevel(logging.INFO)
-        
+
         if not os.path.exists(self.log_path):
             os.makedirs(self.log_path)
         if not os.path.exists(self.model_path):

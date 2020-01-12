@@ -62,8 +62,9 @@ class SystemConfig:
         "System": {
             "DefaultModel": "default",
             "SplitFlag": b'\x99\x99\x99\x00\xff\xff\xff\x00\x99\x99\x99',
-            "SavePath": ""
-
+            "SavePath": "",
+            "RequestCountInterval": 86400,
+            "RequestLimit": -1,
         },
         "RouteMap": default_route,
         "Security": {
