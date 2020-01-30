@@ -4,6 +4,7 @@
 import io
 import os
 import cv2
+import time
 import pickle
 import yaml
 import binascii
@@ -714,7 +715,6 @@ class SDK(object):
 
 if __name__ == '__main__':
     # FROM PATH
-    import time
     # sdk = SDK(r"model.yaml")
     # with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
     #     b = f.read()

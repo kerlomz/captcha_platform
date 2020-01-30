@@ -3,15 +3,16 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import io
 import os
-import pickle
 import cv2
 import time
+import pickle
 import yaml
 import binascii
 import numpy as np
 import PIL.Image as PIL_Image
 from enum import Enum, unique
-import onnxruntime as ort
+import tensorflow as tf
+from tensorflow.python.framework.errors_impl import NotFoundError
 
 SPACE_TOKEN = ['']
 NUMBER = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -329,7 +330,7 @@ class ModelConfig(object):
 
         """COMPILE_MODEL"""
         if self.graph_path:
-            self.compile_model_path = os.path.join(self.graph_path, '{}.onnx'.format(self.model_name))
+            self.compile_model_path = os.path.join(self.graph_path, '{}.tflite'.format(self.model_name))
             if not os.path.exists(self.compile_model_path):
                 if not os.path.exists(self.graph_path):
                     os.makedirs(self.graph_path)
@@ -371,7 +372,7 @@ class Model(object):
     def __init__(self, conf_path: str, source_bytes: bytes = None, key=None):
         if conf_path:
             self.model_conf = ModelConfig(model_conf_path=conf_path)
-            # self.graph_bytes = self.model_conf.compile_model_path
+            self.graph_bytes = None
         if source_bytes:
             model_conf, self.graph_bytes = self.parse_model(source_bytes, key)
             self.model_conf = ModelConfig(model_content=model_conf)
@@ -379,7 +380,6 @@ class Model(object):
     @staticmethod
     def parse_model(source_bytes: bytes, key=None):
         split_tag = b'-#||#-'
-
         if not key:
             key = [b"_____" + i.encode("utf8") + b"_____" for i in "&coriander"]
         if isinstance(key, str):
@@ -396,7 +396,6 @@ class Model(object):
 
         for i in range(key_len_int - 1):
             slice_index = source_bytes.index(key[i])
-            print(slice_index, slice_index - slice_len)
             slices = source_bytes[slice_index - slice_len: slice_index].split(split_tag)
             model_bytes_list.append(slices[1])
             graph_bytes_list.append(slices[0])
@@ -412,15 +411,37 @@ class Model(object):
 
 class GraphSession(object):
     def __init__(self, model: Model):
+        self.interpreter: tf.lite.Interpreter
+        self.model = model
         self.model_conf = model.model_conf
         self.size_str = self.model_conf.size_string
         self.model_name = self.model_conf.model_name
         self.graph_name = self.model_conf.model_name
         self.version = self.model_conf.model_version
-        self.graph_bytes = model.graph_bytes
-        self.sess = ort.InferenceSession(
-            self.model_conf.compile_model_path if not model.graph_bytes else model.graph_bytes
-        )
+        self.loaded = self.load_model()
+
+    def load_model(self):
+
+        if not self.model_conf.model_exists:
+            return False
+        try:
+            if self.model.graph_bytes:
+                graph_def_file = self.model.graph_bytes
+                self.interpreter = tf.lite.Interpreter(model_content=graph_def_file)
+                self.interpreter.allocate_tensors()
+            else:
+                self.interpreter = tf.lite.Interpreter(model_path=self.model_conf.compile_model_path)
+                self.interpreter.allocate_tensors()
+
+            print('TensorFlow Session {} Loaded.'.format(self.model_conf.model_name))
+            return True
+        except NotFoundError:
+            print('The system cannot find the model specified.')
+            return False
+
+    @property
+    def session(self) -> tf.lite.Interpreter:
+        return self.interpreter
 
 
 class Interface(object):
@@ -432,8 +453,10 @@ class Interface(object):
         self.graph_name = self.graph_sess.graph_name
         self.version = self.graph_sess.version
         self.model_category = self.model_conf.category
-        if self.graph_sess.sess:
-            self.sess = self.graph_sess.sess
+        if self.graph_sess.loaded:
+            self.sess = self.graph_sess.session
+            self.dense_decoded = self.sess.get_output_details()
+            self.x = self.sess.get_input_details()
 
     @property
     def name(self):
@@ -447,6 +470,8 @@ class Interface(object):
         predict_text = self.predict_func(
             image_batch,
             self.sess,
+            self.dense_decoded,
+            self.x,
             self.model_conf,
             output_split
         )
@@ -456,17 +481,17 @@ class Interface(object):
     def decode_maps(categories):
         return {index: category for index, category in enumerate(categories, 0)}
 
-    def predict_func(self, image_batch, _sess, model: ModelConfig, output_split=None):
-        if isinstance(image_batch, list):
-            image_batch = np.asarray(image_batch)
+    def predict_func(self, image_batch, _sess, dense_decoded, op_input, model: ModelConfig, output_split=None):
+
         if output_split is None:
             output_split = model.output_split
 
-        dense_decoded_code = _sess.run(["dense_decoded:0"], input_feed={
-            "input:0": image_batch,
-        })
+        _sess.set_tensor(op_input[0]['index'], image_batch)
+        _sess.invoke()
+        dense_decoded_code = _sess.get_tensor(dense_decoded[0]['index'])
+
         decoded_expression = []
-        for item in dense_decoded_code[0]:
+        for item in dense_decoded_code:
             expression = ''
 
             for i in item:
@@ -565,6 +590,7 @@ class ImageUtils(object):
                 im = np.concatenate((up_slice, down_slice), axis=1)
 
             image = im.astype(np.float32)
+            # image = im
             if model.resize[0] == -1:
                 ratio = model.resize[1] / size[1]
                 resize_width = int(ratio * size[0])
@@ -637,12 +663,12 @@ class ImageUtils(object):
 
 class SDK(object):
 
-    def __init__(self, conf_path=None, model_entity: bytes = None):
+    def __init__(self, conf_path=None, model_entity=None):
         if not conf_path and not model_entity:
             raise ValueError('One of parameters conf_path and model_entity must be filled')
-        model = Model(conf_path=conf_path, source_bytes=model_entity)
-        self.model_conf = model.model_conf
-        self.graph_session = GraphSession(model)
+        self.model = Model(conf_path=conf_path, source_bytes=model_entity)
+        self.model_conf = self.model.model_conf
+        self.graph_session = GraphSession(self.model)
         self.interface = Interface(self.graph_session)
 
     def predict(self, image_bytes, param_key=None):
@@ -658,12 +684,13 @@ class SDK(object):
 
 if __name__ == '__main__':
     # FROM PATH
-    # sdk = SDK(conf_path=r"model.yaml")
+
+    # sdk = SDK(r"model.yaml")
     # with open(r"H:\TrainSet\1541187040676.jpg", "rb") as f:
     #     b = f.read()
     # for i in [b] * 1000:
     #     t1 = time.time()
-    #     print(sdk.predict(b), (time.time() - t1) * 1000)
+    #     print(sdk.predict(b), (time.time() - t1)*1000)
 
     # FROM BYTES
     with open(r"model.pl", "rb") as f:
