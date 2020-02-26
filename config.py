@@ -153,6 +153,8 @@ class Model(object):
 
 class ModelConfig(Model):
 
+    model_exists: bool = False
+
     def __init__(self, conf: Config, model_conf_path: str):
         super().__init__(conf=conf, model_conf_path=model_conf_path)
 

@@ -63,7 +63,7 @@ def filter_img(img, target_color, alpha=0.9):
     color_1 = tf.cast(color_1, dtype=tf.int32)
 
     # background color2
-    color_2 = img[34, 6, :]
+    color_2 = img[3, 3, :]
     color_2 = tf.reshape(color_2, [1, 3])
     color_2 = tf.cast(color_2, dtype=tf.int32)
 

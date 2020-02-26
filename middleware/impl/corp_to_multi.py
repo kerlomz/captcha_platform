@@ -30,7 +30,8 @@ def coord_calc(param, is_range=True, is_integer=True):
 def parse_multi_img(image_bytes, param_group):
     img_bytes = image_bytes[0]
     image_arr = np.array(Pil_Image.open(io.BytesIO(img_bytes)))
-    image_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2RGB)
+    if len(image_arr.shape) == 3:
+        image_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2RGB)
     # image_arr = np.fromstring(img_bytes, np.uint8)
     # print(image_arr.shape)
     image_arr = image_arr.swapaxes(0, 1)

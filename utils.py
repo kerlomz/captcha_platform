@@ -121,6 +121,10 @@ class ImageUtils(object):
         def load_image(image_bytes):
             data_stream = io.BytesIO(image_bytes)
             pil_image = PIL_Image.open(data_stream)
+
+            if pil_image.mode == 'P':
+                pil_image = pil_image.convert('RGB')
+
             rgb = pil_image.split()
             size = pil_image.size
 
