@@ -206,6 +206,8 @@ class ModelConfig(Model):
         self.corp_params = self.field_root.get('CorpParams')
         self.output_coord = self.field_root.get('OutputCoord')
         self.batch_model = self.field_root.get('BatchModel')
+        self.external_model = self.field_root.get('ExternalModelForCorp')
+        self.category_split = self.field_root.get('CategorySplit')
 
         """PRETREATMENT"""
         self.pretreatment_root = self.model_conf.get('Pretreatment')

@@ -10,20 +10,21 @@ def decode_maps(categories):
 
 def predict_func(image_batch, _sess, dense_decoded, op_input, model: ModelConfig, output_split=None):
 
-    if output_split is None:
-        output_split = model.output_split
+    output_split = model.output_split if output_split is None else output_split
+
+    category_split = model.category_split if model.category_split else ""
 
     dense_decoded_code = _sess.run(dense_decoded, feed_dict={
         op_input: image_batch,
     })
     decoded_expression = []
     for item in dense_decoded_code:
-        expression = ''
+        expression = []
 
         for i in item:
             if i == -1 or i == model.category_num:
-                expression += ''
+                expression.append("")
             else:
-                expression += decode_maps(model.category)[i]
-        decoded_expression.append(expression)
+                expression.append(decode_maps(model.category)[i])
+        decoded_expression.append(category_split.join(expression))
     return output_split.join(decoded_expression) if len(decoded_expression) > 1 else decoded_expression[0]

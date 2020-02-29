@@ -151,7 +151,8 @@ class NoAuthHandler(BaseHandler):
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
-        auxiliary_result = None
+
+        # auxiliary_result = None
 
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
@@ -183,8 +184,10 @@ class NoAuthHandler(BaseHandler):
 
         if need_color:
             bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
+
         if interface.model_conf.exec_map and not param_key:
             logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
@@ -200,24 +203,61 @@ class NoAuthHandler(BaseHandler):
                 }
             ))
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
-        if interface.model_conf.batch_model:
-            auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
-            auxiliary_name = list(interface.model_conf.batch_model.values())[0]
-            auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
-            auxiliary_image_batch, response = ImageUtils.get_image_batch(
-                auxiliary_interface.model_conf,
-                bytes_batch,
-                param_key=param_key
-            )
-            auxiliary_result = yield self.predict(
-                auxiliary_interface,
-                auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
-                output_split,
-                size_string,
-                start_time
-            )
-            image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
+        if interface.model_conf.external_model and interface.model_conf.corp_params:
+            result = []
+            len_of_result = []
+            pre_corp_num = 0
+            for corp_param in interface.model_conf.corp_params:
+                corp_size = corp_param['corp_size']
+                corp_num_list = corp_param['corp_num']
+                corp_num = corp_num_list[0] * corp_num_list[1]
+                sub_bytes_batch = bytes_batch[pre_corp_num: pre_corp_num + corp_num]
+                pre_corp_num = corp_num
+                size_string = "{}x{}".format(corp_size[0], corp_size[1])
+
+                sub_interface = interface_manager.get_by_size(size_string)
+
+                image_batch, response = ImageUtils.get_image_batch(
+                    sub_interface.model_conf, sub_bytes_batch, param_key=param_key
+                )
+
+                text = yield self.predict(
+                    sub_interface, image_batch, output_split, size_string, start_time, log_params, request_count, uid=uid
+                )
+                result.append(text)
+                len_of_result.append(len(result[0].split(sub_interface.model_conf.category_split)))
+
+            response[self.message_key] = interface.model_conf.output_split.join(result)
+            if interface.model_conf.corp_params and interface.model_conf.output_coord:
+                # final_result = auxiliary_result + "," + response[self.message_key]
+                # if auxiliary_result else response[self.message_key]
+                final_result = response[self.message_key]
+                response[self.message_key] = corp_to_multi.get_coordinate(
+                    label=final_result,
+                    param_group=interface.model_conf.corp_params,
+                    title_index=[i for i in range(len_of_result[0])]
+                )
+            return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
+        else:
+            image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
+
+        # if interface.model_conf.batch_model:
+        #     auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
+        #     auxiliary_name = list(interface.model_conf.batch_model.values())[0]
+        #     auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
+        #     auxiliary_image_batch, response = ImageUtils.get_image_batch(
+        #         auxiliary_interface.model_conf,
+        #         bytes_batch,
+        #         param_key=param_key
+        #     )
+        #     auxiliary_result = yield self.predict(
+        #         auxiliary_interface,
+        #         auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
+        #         output_split,
+        #         size_string,
+        #         start_time
+        #     )
+        #     image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
 
         if not image_batch:
             logger.error('[{}] - [{} {}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
@@ -232,13 +272,15 @@ class NoAuthHandler(BaseHandler):
         )
         response[self.uid_key] = uid
         self.executor.submit(self.save_image, uid, response[self.message_key], bytes_batch[0])
-        if interface.model_conf.corp_params and interface.model_conf.output_coord:
-            final_result = auxiliary_result + "," + response[self.message_key] if auxiliary_result else response[self.message_key]
-            response[self.message_key] = corp_to_multi.get_coordinate(
-                label=final_result,
-                param_group=interface.model_conf.corp_params,
-                title_index=[0]
-            )
+        # if interface.model_conf.corp_params and interface.model_conf.output_coord:
+        #     # final_result = auxiliary_result + "," + response[self.message_key]
+        #     # if auxiliary_result else response[self.message_key]
+        #     final_result = response[self.message_key]
+        #     response[self.message_key] = corp_to_multi.get_coordinate(
+        #         label=final_result,
+        #         param_group=interface.model_conf.corp_params,
+        #         title_index=[0]
+        #     )
         return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 

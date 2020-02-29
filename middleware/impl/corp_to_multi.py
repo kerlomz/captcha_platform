@@ -58,11 +58,14 @@ def get_coordinate(label: str, param_group, title_index=None):
 def get_pair_index(label: str, title_index=None):
     if title_index is None:
         title_index = [0]
+    max_index = max(title_index)
+
     label_group = label.split(',')
     titles = [label_group[i] for i in title_index]
+
     index_group = []
     for title in titles:
-        for i, item in enumerate(label_group[1:]):
+        for i, item in enumerate(label_group[max_index+1:]):
             if item == title:
                 index_group.append(i)
         index_group = [i for i in index_group]
