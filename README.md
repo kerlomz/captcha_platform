@@ -24,9 +24,8 @@ This project is only for deployment models, If you need to train the model, plea
     cd captcha_platform # captcha_platform is the project path.
     ```
 4. ```pip install -r requirements.txt```
-5. Copy a config_demo.yaml to the same directory named config.yaml
-6. Place your trained model.yaml in model folder, and your model.pb in graph folder (create if not exist)
-7. Deploy as follows.
+5. Place your trained model.yaml in model folder, and your model.pb in graph folder (create if not exist)
+6. Deploy as follows.
 
 ## 1. Http Version
 1. Linux

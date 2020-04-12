@@ -29,7 +29,7 @@ def coord_calc(param, is_range=True, is_integer=True):
 
 def parse_multi_img(image_bytes, param_group):
     img_bytes = image_bytes[0]
-    image_arr = np.array(Pil_Image.open(io.BytesIO(img_bytes)))
+    image_arr = np.array(Pil_Image.open(io.BytesIO(img_bytes)).convert('RGB'))
     if len(image_arr.shape) == 3:
         image_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2RGB)
     # image_arr = np.fromstring(img_bytes, np.uint8)
@@ -72,3 +72,28 @@ def get_pair_index(label: str, title_index=None):
     return index_group
 
 
+if __name__ == '__main__':
+    import os
+    import hashlib
+    root_dir = r"H:\Task\Trains\d111_Trains"
+    target_dir = r"F:\1q2"
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    _param_group = [
+        {
+          "start_pos": [20, 50],
+          "interval_size": [20, 20],
+          "corp_num": [4, 2],
+          "corp_size": [60, 60]
+        }
+    ]
+    for name in os.listdir(root_dir):
+        path = os.path.join(root_dir, name)
+        with open(path, "rb") as f:
+            file_bytes = [f.read()]
+        group = parse_multi_img(file_bytes, _param_group)
+        for b in group:
+            tag = hashlib.md5(b).hexdigest()
+            p = os.path.join(target_dir, "{}.png".format(tag))
+            with open(p, "wb") as f:
+                f.write(b)

@@ -130,7 +130,7 @@ class ImageUtils(object):
 
             gif_handle = model.pre_concat_frames != -1 or model.pre_blend_frames != -1
 
-            if len(rgb) > 3 and model.pre_replace_transparent and gif_handle:
+            if (len(rgb) > 3 and model.pre_replace_transparent) and not gif_handle:
                 background = PIL_Image.new('RGB', pil_image.size, (255, 255, 255))
                 background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
                 pil_image = background
