@@ -43,6 +43,10 @@ class Config(object):
         self.request_count_interval = self.sys_cf['System'].get("RequestCountInterval")
         self.request_limit = self.sys_cf['System'].get("RequestLimit")
         self.request_limit = self.request_limit if self.request_limit else -1
+        self.global_request_limit = self.sys_cf['System'].get("GlobalRequestLimit")
+        self.global_request_limit = self.global_request_limit if self.global_request_limit else -1
+        self.exceeded_msg = self.sys_cf['System'].get("ExceededMessage")
+        self.exceeded_msg = self.exceeded_msg if self.exceeded_msg else "The maximum number of requests has been exceeded"
         self.request_count_interval = self.request_count_interval if self.request_count_interval else 60 * 60 * 24
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"

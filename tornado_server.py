@@ -32,6 +32,7 @@ from middleware import *
 from event_loop import event_loop
 
 tornado.options.define('request_count', default=dict(), type=dict)
+tornado.options.define('global_request_count', default=0, type=int)
 model_path = "model"
 system_config = Config(conf_path="config.yaml", model_path=model_path, graph_path="graph")
 sign = Signature(ServerType.TORNADO, system_config)
@@ -117,6 +118,11 @@ class NoAuthHandler(BaseHandler):
             tornado.options.options.request_count[self.request.remote_ip] += 1
         return tornado.options.options.request_count[self.request.remote_ip]
 
+    @property
+    def global_request_incr(self):
+        tornado.options.options.global_request_count += 1
+        return tornado.options.options.global_request_count
+
     @tornado.gen.coroutine
     def post(self):
         uid = str(uuid.uuid1())
@@ -134,6 +140,7 @@ class NoAuthHandler(BaseHandler):
         param_key = ParamUtils.filter(data.get('param_key'))
 
         request_incr = self.request_incr
+        global_count = self.global_request_incr
         request_count = " - Count[{}]".format(request_incr)
         log_params = " - ParamKey[{}]".format(param_key) if param_key else ""
         log_params += " - NeedColor[{}]".format(need_color) if need_color else ""
@@ -157,16 +164,28 @@ class NoAuthHandler(BaseHandler):
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
-
-        if request_limit != -1 and request_incr > request_limit:
+        if global_request_limit != -1 and global_count > global_request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
-                uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
-                "Maximum number of requests exceeded",
+                uid, self.request.remote_ip, self.request.uri, size_string, global_count, log_params,
+                "Maximum number of requests exceeded (G)",
                 round((time.time() - start_time) * 1000))
             )
             return self.finish(json_encode({
                 self.uid_key: uid,
-                self.message_key: "The maximum number of requests has been exceeded",
+                self.message_key: system_config.exceeded_msg,
+                self.status_bool_key: False,
+                self.status_code_key: -555
+            }))
+
+        if request_limit != -1 and request_incr > request_limit:
+            logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                "Maximum number of requests exceeded (IP)",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode({
+                self.uid_key: uid,
+                self.message_key: system_config.exceeded_msg,
                 self.status_bool_key: False,
                 self.status_code_key: -444
             }))
@@ -370,6 +389,7 @@ class HeartBeatHandler(BaseHandler):
 
 def clear_job():
     tornado.options.options.request_count = {}
+    tornado.options.options.global_request_count = 0
 
 
 def make_app(route: list):
@@ -392,6 +412,7 @@ if __name__ == "__main__":
     opt, args = parser.parse_args()
     server_port = opt.port
     request_limit = system_config.request_limit
+    global_request_limit = system_config.global_request_limit
     workers = opt.workers
     logger = system_config.logger
     tornado.log.enable_pretty_logging(logger=logger)

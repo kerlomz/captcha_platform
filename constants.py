@@ -65,6 +65,7 @@ class SystemConfig:
             "SavePath": "",
             "RequestCountInterval": 86400,
             "RequestLimit": -1,
+            "GlobalRequestLimit": -1,
         },
         "RouteMap": default_route,
         "Security": {
