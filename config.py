@@ -6,7 +6,7 @@ import uuid
 import yaml
 import hashlib
 import logging
-from logging.handlers import TimedRotatingFileHandler
+import logging.handlers
 from category import *
 from constants import SystemConfig, ModelField, ModelScene
 
@@ -50,6 +50,8 @@ class Config(object):
         self.request_count_interval = self.request_count_interval if self.request_count_interval else 60 * 60 * 24
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
+        self.without_logger = self.sys_cf['System'].get('WithoutLogger')
+        self.without_logger = self.without_logger if self.without_logger is not None else False
         self.logger = logging.getLogger(self.logger_tag)
         self.use_default_authorization = False
         self.authorization = None
@@ -59,27 +61,29 @@ class Config(object):
     def init_logger(self):
         self.logger.setLevel(logging.INFO)
 
-        if not os.path.exists(self.log_path):
-            os.makedirs(self.log_path)
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
         if not os.path.exists(self.graph_path):
             os.makedirs(self.graph_path)
 
-        file_handler = TimedRotatingFileHandler(
-            '{}/{}.log'.format(self.log_path, "captcha_platform"),
-            when="MIDNIGHT",
-            interval=1,
-            backupCount=180,
-            encoding='utf-8'
-        )
         self.logger.propagate = False
-        stream_handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        stream_handler.setFormatter(formatter)
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(stream_handler)
+
+        if not self.without_logger:
+            if not os.path.exists(self.log_path):
+                os.makedirs(self.log_path)
+            file_handler = logging.handlers.TimedRotatingFileHandler(
+                '{}/{}.log'.format(self.log_path, "captcha_platform"),
+                when="MIDNIGHT",
+                interval=1,
+                backupCount=180,
+                encoding='utf-8'
+            )
+            stream_handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(formatter)
+            stream_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(stream_handler)
 
     def assignment(self):
         # ---AUTHORIZATION START---

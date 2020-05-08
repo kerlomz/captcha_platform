@@ -5,6 +5,7 @@ import os
 import uuid
 import time
 import json
+import platform
 import numpy as np
 import asyncio
 import hashlib
@@ -405,7 +406,8 @@ scheduler.add_job(clear_job, trigger)
 scheduler.start()
 
 if __name__ == "__main__":
-    os.system("chcp 65001")
+    if platform.system() == 'Windows':
+        os.system("chcp 65001")
     parser = optparse.OptionParser()
     parser.add_option('-p', '--port', type="int", default=19952, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
