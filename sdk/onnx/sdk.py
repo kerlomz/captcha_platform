@@ -366,7 +366,7 @@ class ModelConfig(object):
 
 class Model(object):
     model_conf: ModelConfig
-    graph_bytes: object
+    graph_bytes: object = None
 
     def __init__(self, conf_path: str, source_bytes: bytes = None, key=None):
         if conf_path:
