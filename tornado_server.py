@@ -171,12 +171,12 @@ class NoAuthHandler(BaseHandler):
                 "Maximum number of requests exceeded (G)",
                 round((time.time() - start_time) * 1000))
             )
-            return self.finish(json_encode({
+            return self.finish(json.dumps({
                 self.uid_key: uid,
                 self.message_key: system_config.exceeded_msg,
                 self.status_bool_key: False,
                 self.status_code_key: -555
-            }))
+            }, ensure_ascii=False))
 
         if request_limit != -1 and request_incr > request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
@@ -184,12 +184,12 @@ class NoAuthHandler(BaseHandler):
                 "Maximum number of requests exceeded (IP)",
                 round((time.time() - start_time) * 1000))
             )
-            return self.finish(json_encode({
+            return self.finish(json.dumps({
                 self.uid_key: uid,
                 self.message_key: system_config.exceeded_msg,
                 self.status_bool_key: False,
                 self.status_code_key: -444
-            }))
+            }, ensure_ascii=False))
         if model_name_key in data and data[model_name_key]:
             interface = interface_manager.get_by_name(model_name)
         else:
@@ -417,6 +417,7 @@ if __name__ == "__main__":
     global_request_limit = system_config.global_request_limit
     workers = opt.workers
     logger = system_config.logger
+    print('=============WITHOUT_LOGGER=============', system_config.without_logger)
     tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
     threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
