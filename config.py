@@ -41,6 +41,7 @@ class Config(object):
         self.response_def_map = self.response_def_map if self.response_def_map else SystemConfig.default_config['ResponseDef']
         self.save_path = self.sys_cf['System'].get("SavePath")
         self.request_count_interval = self.sys_cf['System'].get("RequestCountInterval")
+        self.g_request_count_interval = self.sys_cf['System'].get("GlobalRequestCountInterval")
         self.request_limit = self.sys_cf['System'].get("RequestLimit")
         self.request_limit = self.request_limit if self.request_limit else -1
         self.global_request_limit = self.sys_cf['System'].get("GlobalRequestLimit")
@@ -48,6 +49,7 @@ class Config(object):
         self.exceeded_msg = self.sys_cf['System'].get("ExceededMessage")
         self.exceeded_msg = self.exceeded_msg if self.exceeded_msg else "The maximum number of requests has been exceeded"
         self.request_count_interval = self.request_count_interval if self.request_count_interval else 60 * 60 * 24
+        self.g_request_count_interval = self.g_request_count_interval if self.g_request_count_interval else 60 * 60 * 24
         self.logger_tag = self.sys_cf['System'].get('LoggerTag')
         self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
         self.without_logger = self.sys_cf['System'].get('WithoutLogger')
