@@ -388,8 +388,11 @@ class HeartBeatHandler(BaseHandler):
         self.finish("")
 
 
-def clear_job():
+def clear_specific_job():
     tornado.options.options.request_count = {}
+
+
+def clear_global_job():
     tornado.options.options.global_request_count = 0
 
 
@@ -401,8 +404,10 @@ def make_app(route: list):
     ])
 
 
-trigger = IntervalTrigger(seconds=system_config.request_count_interval)
-scheduler.add_job(clear_job, trigger)
+trigger_specific = IntervalTrigger(seconds=system_config.request_count_interval)
+trigger_global = IntervalTrigger(seconds=system_config.g_request_count_interval)
+scheduler.add_job(clear_specific_job, trigger_specific)
+scheduler.add_job(clear_global_job, trigger_global)
 scheduler.start()
 
 if __name__ == "__main__":

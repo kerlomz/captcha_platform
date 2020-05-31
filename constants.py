@@ -64,6 +64,7 @@ class SystemConfig:
             "SplitFlag": b'\x99\x99\x99\x00\xff\xff\xff\x00\x99\x99\x99',
             "SavePath": "",
             "RequestCountInterval": 86400,
+            "GlobalRequestCountInterval": 86400,
             "RequestLimit": -1,
             "GlobalRequestLimit": -1,
             "WithoutLogger": False
