@@ -17,7 +17,7 @@ class Interface(object):
         self.size_str = self.model_conf.size_string
         self.graph_name = self.graph_sess.graph_name
         self.version = self.graph_sess.version
-        self.model_category = self.model_conf.category
+        self.model_category = self.model_conf.category_param
         if self.graph_sess.loaded:
             self.sess = self.graph_sess.session
             self.dense_decoded = self.sess.graph.get_tensor_by_name("dense_decoded:0")
