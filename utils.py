@@ -120,10 +120,10 @@ class ImageUtils(object):
 
         def load_image(image_bytes):
             data_stream = io.BytesIO(image_bytes)
-            pil_image = PIL_Image.open(data_stream)
+            pil_image = PIL_Image.open(data_stream).convert('RGB')
 
-            if pil_image.mode == 'P':
-                pil_image = pil_image.convert('RGB')
+            # if pil_image.mode == 'P':
+            #     pil_image = pil_image.convert('RGB')
 
             rgb = pil_image.split()
             size = pil_image.size
@@ -142,14 +142,14 @@ class ImageUtils(object):
             else:
                 im = np.asarray(pil_image)
 
-            if model.image_channel == 1 and len(im.shape) == 3:
-                im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
-
             im = preprocessing_by_func(
                 exec_map=model.exec_map,
                 key=param_key,
                 src_arr=im
             )
+
+            if model.image_channel == 1 and len(im.shape) == 3:
+                im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
 
             im = preprocessing(
                 image=im,
