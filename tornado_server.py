@@ -223,6 +223,20 @@ class NoAuthHandler(BaseHandler):
                     self.status_code_key: 474
                 }
             ))
+        elif exec_map and param_key and param_key not in exec_map:
+            logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
+                "The param_key parameter is not support in the model.",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode(
+                {
+                    self.uid_key: uid,
+                    self.message_key: "Not support the parameter [param_key].",
+                    self.status_bool_key: False,
+                    self.status_code_key: 474
+                }
+            ))
         elif exec_map and len(exec_map.keys()) == 1:
             param_key = list(interface.model_conf.exec_map.keys())[0]
 
