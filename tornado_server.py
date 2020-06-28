@@ -208,7 +208,8 @@ class NoAuthHandler(BaseHandler):
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
 
-        if interface.model_conf.exec_map and not param_key:
+        exec_map = interface.model_conf.exec_map
+        if exec_map and len(exec_map.keys()) > 1 and not param_key:
             logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
                 "The model is missing the param_key parameter because the model is configured with ExecuteMap.",
@@ -222,6 +223,8 @@ class NoAuthHandler(BaseHandler):
                     self.status_code_key: 474
                 }
             ))
+        elif exec_map and len(exec_map.keys()) == 1:
+            param_key = list(interface.model_conf.exec_map.keys())[0]
 
         if interface.model_conf.external_model and interface.model_conf.corp_params:
             result = []
@@ -313,16 +316,19 @@ class AuthHandler(NoAuthHandler):
 
 class SimpleHandler(BaseHandler):
 
+    uid_key: str = system_config.response_def_map['Uid']
     message_key: str = system_config.response_def_map['Message']
     status_bool_key = system_config.response_def_map['StatusBool']
     status_code_key = system_config.response_def_map['StatusCode']
 
     def post(self):
+        uid = str(uuid.uuid1())
+        param_key = None
         start_time = time.time()
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode(
-                {self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
+                {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
             ))
 
         bytes_batch, response = self.image_utils.get_bytes_batch(self.request.body)
@@ -345,20 +351,37 @@ class SimpleHandler(BaseHandler):
                 {self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
             ))
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=None)
+        exec_map = interface.model_conf.exec_map
+        if exec_map and len(exec_map.keys()) > 1:
+            logger.info('[{}] - [{} {}] | [{}] - Size[{}] - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, interface.name, size_string,
+                "The model is configured with ExecuteMap, but the api do not support this param.",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode(
+                {
+                    self.message_key: "the api do not support [ExecuteMap].",
+                    self.status_bool_key: False,
+                    self.status_code_key: 474
+                }
+            ))
+        elif exec_map and len(exec_map.keys()) == 1:
+            param_key = list(interface.model_conf.exec_map.keys())[0]
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
 
         if not image_batch:
-            logger.error('[{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
-
-                self.request.remote_ip, interface.name, size_string, response,
+            logger.error('[{}] - [{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
+                uid, self.request.remote_ip, interface.name, size_string, response,
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, None)
-        logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
-            self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
+        logger.info('[{}] - [{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
+            uid, self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
+        response[self.uid_key] = uid
         response[self.message_key] = result
         return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
