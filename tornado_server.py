@@ -224,6 +224,8 @@ class NoAuthHandler(BaseHandler):
         else:
             interface = interface_manager.get_by_size(size_string)
         if not interface:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('Service is not ready!')
             return self.finish(json_encode(
                 {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
@@ -239,6 +241,8 @@ class NoAuthHandler(BaseHandler):
 
         exec_map = interface.model_conf.exec_map
         if exec_map and len(exec_map.keys()) > 1 and not param_key:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
                 "The model is missing the param_key parameter because the model is configured with ExecuteMap.",
@@ -253,6 +257,8 @@ class NoAuthHandler(BaseHandler):
                 }
             ))
         elif exec_map and param_key and param_key not in exec_map:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
                 "The param_key parameter is not support in the model.",
@@ -326,6 +332,8 @@ class NoAuthHandler(BaseHandler):
         #     image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
 
         if not image_batch:
+            self.request_desc()
+            self.global_request_desc()
             logger.error('[{}] - [{} {}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, response,
                 round((time.time() - start_time) * 1000))
