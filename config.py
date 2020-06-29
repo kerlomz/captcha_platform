@@ -20,6 +20,10 @@ MODEL_FIELD_MAP = {
 }
 
 
+def get_default(src, default):
+    return src if src else default
+
+
 class Config(object):
     def __init__(self, conf_path: str, graph_path: str = None, model_path: str = None):
         self.model_path = model_path
@@ -31,27 +35,32 @@ class Config(object):
         self.default_model = self.sys_cf['System']['DefaultModel']
         self.split_flag = self.sys_cf['System']['SplitFlag']
         self.split_flag = self.split_flag if isinstance(self.split_flag, bytes) else SystemConfig.split_flag
-
-        self.route_map = self.sys_cf.get('RouteMap')
-        self.route_map = self.route_map if self.route_map else SystemConfig.default_route
+        self.route_map = get_default(self.sys_cf.get('RouteMap'), SystemConfig.default_route)
         self.log_path = "logs"
-        self.request_def_map = self.sys_cf.get('RequestDef')
-        self.request_def_map = self.request_def_map if self.request_def_map else SystemConfig.default_config['RequestDef']
-        self.response_def_map = self.sys_cf.get('ResponseDef')
-        self.response_def_map = self.response_def_map if self.response_def_map else SystemConfig.default_config['ResponseDef']
+        self.request_def_map = get_default(self.sys_cf.get('RequestDef'), SystemConfig.default_config['RequestDef'])
+        self.response_def_map = get_default(self.sys_cf.get('ResponseDef'), SystemConfig.default_config['ResponseDef'])
         self.save_path = self.sys_cf['System'].get("SavePath")
-        self.request_count_interval = self.sys_cf['System'].get("RequestCountInterval")
-        self.g_request_count_interval = self.sys_cf['System'].get("GlobalRequestCountInterval")
-        self.request_limit = self.sys_cf['System'].get("RequestLimit")
-        self.request_limit = self.request_limit if self.request_limit else -1
-        self.global_request_limit = self.sys_cf['System'].get("GlobalRequestLimit")
-        self.global_request_limit = self.global_request_limit if self.global_request_limit else -1
-        self.exceeded_msg = self.sys_cf['System'].get("ExceededMessage")
-        self.exceeded_msg = self.exceeded_msg if self.exceeded_msg else "The maximum number of requests has been exceeded"
-        self.request_count_interval = self.request_count_interval if self.request_count_interval else 60 * 60 * 24
-        self.g_request_count_interval = self.g_request_count_interval if self.g_request_count_interval else 60 * 60 * 24
-        self.logger_tag = self.sys_cf['System'].get('LoggerTag')
-        self.logger_tag = self.logger_tag if self.logger_tag else "coriander"
+        self.request_count_interval = get_default(
+            src=self.sys_cf['System'].get("RequestCountInterval"),
+            default=60 * 60 * 24
+        )
+        self.g_request_count_interval = get_default(
+            src=self.sys_cf['System'].get("GlobalRequestCountInterval"),
+            default=60 * 60 * 24
+        )
+        self.request_limit = get_default(self.sys_cf['System'].get("RequestLimit"), -1)
+        self.global_request_limit = get_default(self.sys_cf['System'].get("GlobalRequestLimit"), -1)
+        self.exceeded_msg = get_default(
+            src=self.sys_cf['System'].get("ExceededMessage"),
+            default="The maximum number of requests has been exceeded"
+        )
+
+        self.request_size_limit: dict = get_default(
+            src=self.sys_cf['System'].get('RequestSizeLimit'),
+            default={}
+        )
+
+        self.logger_tag = get_default(self.sys_cf['System'].get('LoggerTag'), "coriander")
         self.without_logger = self.sys_cf['System'].get('WithoutLogger')
         self.without_logger = self.without_logger if self.without_logger is not None else False
         self.logger = logging.getLogger(self.logger_tag)
@@ -162,7 +171,6 @@ class Model(object):
 
 
 class ModelConfig(Model):
-
     model_exists: bool = False
 
     def __init__(self, conf: Config, model_conf_path: str):

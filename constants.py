@@ -67,7 +67,8 @@ class SystemConfig:
             "GlobalRequestCountInterval": 86400,
             "RequestLimit": -1,
             "GlobalRequestLimit": -1,
-            "WithoutLogger": False
+            "WithoutLogger": False,
+            "RequestSizeLimit": {}
         },
         "RouteMap": default_route,
         "Security": {

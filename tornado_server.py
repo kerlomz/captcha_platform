@@ -51,6 +51,29 @@ class BaseHandler(RequestHandler):
         self.executor = ThreadPoolExecutor(workers)
         self.image_utils = ImageUtils(system_config)
 
+    @property
+    def request_incr(self):
+        if self.request.remote_ip not in tornado.options.options.request_count:
+            tornado.options.options.request_count[self.request.remote_ip] = 1
+        else:
+            tornado.options.options.request_count[self.request.remote_ip] += 1
+        return tornado.options.options.request_count[self.request.remote_ip]
+
+    def request_desc(self):
+        if self.request.remote_ip not in tornado.options.options.request_count:
+            return
+        else:
+            tornado.options.options.request_count[self.request.remote_ip] -= 1
+
+    @property
+    def global_request_incr(self):
+        tornado.options.options.global_request_count += 1
+        return tornado.options.options.global_request_count
+
+    @staticmethod
+    def global_request_desc():
+        tornado.options.options.global_request_count -= 1
+
     def data_received(self, chunk):
         pass
 
@@ -111,19 +134,6 @@ class NoAuthHandler(BaseHandler):
 
         return result
 
-    @property
-    def request_incr(self):
-        if self.request.remote_ip not in tornado.options.options.request_count:
-            tornado.options.options.request_count[self.request.remote_ip] = 1
-        else:
-            tornado.options.options.request_count[self.request.remote_ip] += 1
-        return tornado.options.options.request_count[self.request.remote_ip]
-
-    @property
-    def global_request_incr(self):
-        tornado.options.options.global_request_count += 1
-        return tornado.options.options.global_request_count
-
     @tornado.gen.coroutine
     def post(self):
         uid = str(uuid.uuid1())
@@ -147,6 +157,8 @@ class NoAuthHandler(BaseHandler):
         log_params += " - NeedColor[{}]".format(need_color) if need_color else ""
 
         if interface_manager.total == 0:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode(
                 {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
@@ -160,11 +172,28 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
 
-        # auxiliary_result = None
-
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
+        if system_config.request_size_limit and size_string not in system_config.request_size_limit:
+            self.request_desc()
+            self.global_request_desc()
+            logger.info('[{}] - [{} {}] | Size[{}] - [{}][{}] - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, size_string, global_count, log_params,
+                "Image size is invalid.",
+                round((time.time() - start_time) * 1000))
+            )
+            msg = system_config.request_size_limit.get("msg")
+            msg = msg if msg else "The size of the picture is wrong. " \
+                                  "Only the original image is supported. " \
+                                  "Please do not take a screenshot!"
+            return self.finish(json.dumps({
+                self.uid_key: uid,
+                self.message_key: msg,
+                self.status_bool_key: False,
+                self.status_code_key: -250
+            }, ensure_ascii=False))
+
         if global_request_limit != -1 and global_count > global_request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, size_string, global_count, log_params,
