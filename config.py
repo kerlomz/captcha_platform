@@ -3,6 +3,7 @@
 # Author: kerlomz <kerlomz@gmail.com>
 import os
 import uuid
+import json
 import yaml
 import hashlib
 import logging
@@ -19,9 +20,23 @@ MODEL_FIELD_MAP = {
     'Text': ModelField.Text
 }
 
+BLACKLIST_PATH = "blacklist.json"
+
 
 def get_default(src, default):
     return src if src else default
+
+
+def blacklist():
+    if not os.path.exists(BLACKLIST_PATH):
+        return []
+    try:
+        with open(BLACKLIST_PATH, "r", encoding="utf8") as f_blacklist:
+            result = json.loads("".join(f_blacklist.readlines()))
+            return result
+    except Exception as e:
+        print(e)
+        return []
 
 
 class Config(object):

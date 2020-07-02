@@ -24,7 +24,7 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
-from config import Config
+from config import Config, blacklist
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from tornado.concurrent import run_on_executor
@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 from middleware import *
 from event_loop import event_loop
 
+tornado.options.define('ip_blacklist', default=list(), type=list)
 tornado.options.define('request_count', default=dict(), type=dict)
 tornado.options.define('global_request_count', default=0, type=int)
 model_path = "model"
@@ -207,7 +208,8 @@ class NoAuthHandler(BaseHandler):
                 self.status_code_key: -555
             }, ensure_ascii=False))
 
-        if request_limit != -1 and request_incr > request_limit:
+        assert_blacklist = self.request.remote_ip in tornado.options.options.ip_blacklist
+        if assert_blacklist or request_limit != -1 and request_incr > request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
                 "Maximum number of requests exceeded (IP)",
@@ -443,7 +445,8 @@ class ServiceHandler(BaseHandler):
         response = {
             "total": interface_manager.total,
             "online": interface_manager.online_names,
-            "invalid": interface_manager.invalid_group
+            "invalid": interface_manager.invalid_group,
+            "blacklist": tornado.options.options.ip_blacklist
         }
         return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
 
@@ -470,6 +473,10 @@ def clear_global_job():
     tornado.options.options.global_request_count = 0
 
 
+def update_blacklist():
+    tornado.options.options.ip_blacklist = blacklist()
+
+
 def make_app(route: list):
     return tornado.web.Application([
         (i['Route'], globals()[i['Class']], i.get("Param"))
@@ -480,6 +487,8 @@ def make_app(route: list):
 
 trigger_specific = IntervalTrigger(seconds=system_config.request_count_interval)
 trigger_global = IntervalTrigger(seconds=system_config.g_request_count_interval)
+trigger_blacklist = IntervalTrigger(seconds=60)
+scheduler.add_job(update_blacklist, trigger_blacklist)
 scheduler.add_job(clear_specific_job, trigger_specific)
 scheduler.add_job(clear_global_job, trigger_global)
 scheduler.start()
