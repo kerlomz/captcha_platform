@@ -22,9 +22,9 @@ from middleware import *
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
-conf_path = 'config.yaml'
-model_path = 'model'
-graph_path = 'graph'
+conf_path = '../config.yaml'
+model_path = '../model'
+graph_path = '../graph'
 
 
 system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)

@@ -229,9 +229,6 @@ class NoAuthHandler(BaseHandler):
 
         output_split = output_split if 'output_split' in data else interface.model_conf.output_split
 
-        # if need_color:
-        #     bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
-
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
 
@@ -322,7 +319,9 @@ class NoAuthHandler(BaseHandler):
         predict_result = yield self.predict(interface, image_batch, output_split)
 
         if need_color:
-            need_index = color_extract.predict_color(image_batch=image_batch, color=color_map[need_color])
+            # only support six label and size [90x35].
+            color_batch = np.resize(image_batch[0], (90, 35, 3))
+            need_index = color_extract.predict_color(image_batch=[color_batch], color=color_map[need_color])
             predict_result = "".join([v for i, v in enumerate(predict_result) if i in need_index])
 
         uid_str = "[{}] - ".format(uid)
