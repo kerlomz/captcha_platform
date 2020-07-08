@@ -314,6 +314,7 @@ class ModelConfig(object):
         self.resize: list = self.field_root.get('Resize')
         self.output_split = self.field_root.get('OutputSplit')
         self.output_split = self.output_split if self.output_split else ""
+        self.category_split = self.field_root.get('CategorySplit')
         self.corp_params = self.field_root.get('CorpParams')
         self.output_coord = self.field_root.get('OutputCoord')
         self.batch_model = self.field_root.get('BatchModel')
@@ -326,7 +327,6 @@ class ModelConfig(object):
         self.pre_concat_frames = self.get_var(self.pretreatment_root, 'ConcatFrames', -1)
         self.pre_blend_frames = self.get_var(self.pretreatment_root, 'BlendFrames', -1)
         self.exec_map = self.pretreatment_root.get('ExecuteMap')
-
         """COMPILE_MODEL"""
         if self.graph_path:
             self.compile_model_path = os.path.join(self.graph_path, '{}.onnx'.format(self.model_name))
@@ -459,22 +459,25 @@ class Interface(object):
     def predict_func(self, image_batch, _sess, model: ModelConfig, output_split=None):
         if isinstance(image_batch, list):
             image_batch = np.asarray(image_batch)
-        if output_split is None:
-            output_split = model.output_split
+
+        output_split = model.output_split if output_split is None else output_split
+
+        category_split = model.category_split if model.category_split else ""
 
         dense_decoded_code = _sess.run(["dense_decoded:0"], input_feed={
             "input:0": image_batch,
         })
         decoded_expression = []
-        for item in dense_decoded_code[0]:
-            expression = ''
 
+        for item in dense_decoded_code[0]:
+            expression = []
             for i in item:
                 if i == -1 or i == model.category_num:
-                    expression += ''
+                    expression.append("")
                 else:
-                    expression += self.decode_maps(model.category)[i]
-            decoded_expression.append(expression)
+                    expression.append(self.decode_maps(model.category)[i])
+
+            decoded_expression.append(category_split.join(expression))
         return output_split.join(decoded_expression) if len(decoded_expression) > 1 else decoded_expression[0]
 
 

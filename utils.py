@@ -120,7 +120,9 @@ class ImageUtils(object):
 
         def load_image(image_bytes):
             data_stream = io.BytesIO(image_bytes)
-            pil_image = PIL_Image.open(data_stream).convert('RGB')
+            pil_image = PIL_Image.open(data_stream)
+            if model.pre_concat_frames == -1 and model.pre_concat_frames == -1:
+                pil_image = pil_image.convert('RGB')
 
             # if pil_image.mode == 'P':
             #     pil_image = pil_image.convert('RGB')
