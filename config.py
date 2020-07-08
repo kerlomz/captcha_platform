@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import os
+import sys
 import uuid
 import json
 import yaml
@@ -21,6 +22,25 @@ MODEL_FIELD_MAP = {
 }
 
 BLACKLIST_PATH = "blacklist.json"
+
+
+def resource_path(relative_path):
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+def get_version():
+    version_file_path = resource_path("VERSION")
+
+    if not os.path.exists(version_file_path):
+        return "NULL"
+
+    with open(version_file_path, "r", encoding="utf8") as f:
+        return "".join(f.readlines()).strip()
 
 
 def get_default(src, default):
@@ -48,6 +68,9 @@ class Config(object):
         self.access_key = None
         self.secret_key = None
         self.default_model = self.sys_cf['System']['DefaultModel']
+        self.default_port = self.sys_cf['System'].get('DefaultPort')
+        if not self.default_port:
+            self.default_port = 19952
         self.split_flag = self.sys_cf['System']['SplitFlag']
         self.split_flag = self.split_flag if isinstance(self.split_flag, bytes) else SystemConfig.split_flag
         self.route_map = get_default(self.sys_cf.get('RouteMap'), SystemConfig.default_route)

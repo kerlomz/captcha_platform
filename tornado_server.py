@@ -24,7 +24,7 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
-from config import Config, blacklist
+from config import Config, blacklist, get_version
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from tornado.concurrent import run_on_executor
@@ -121,18 +121,12 @@ class NoAuthHandler(BaseHandler):
                 f.write(image_bytes)
 
     @run_on_executor
-    def predict(self, interface: Interface, image_batch, split_char, size_string, start_time, log_params, request_count, uid=""):
+    def predict(self, interface: Interface, image_batch, split_char):
         result = interface.predict_batch(image_batch, split_char)
         if interface.model_category == 'ARITHMETIC':
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))
-        uid_str = "[{}] - ".format(uid)
-        logger.info('{}[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
-            uid_str, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params, result,
-            round((time.time() - start_time) * 1000))
-        )
-
         return result
 
     @tornado.gen.coroutine
@@ -235,8 +229,8 @@ class NoAuthHandler(BaseHandler):
 
         output_split = output_split if 'output_split' in data else interface.model_conf.output_split
 
-        if need_color:
-            bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
+        # if need_color:
+        #     bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
 
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
@@ -315,24 +309,6 @@ class NoAuthHandler(BaseHandler):
         else:
             image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
 
-        # if interface.model_conf.batch_model:
-        #     auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
-        #     auxiliary_name = list(interface.model_conf.batch_model.values())[0]
-        #     auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
-        #     auxiliary_image_batch, response = ImageUtils.get_image_batch(
-        #         auxiliary_interface.model_conf,
-        #         bytes_batch,
-        #         param_key=param_key
-        #     )
-        #     auxiliary_result = yield self.predict(
-        #         auxiliary_interface,
-        #         auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
-        #         output_split,
-        #         size_string,
-        #         start_time
-        #     )
-        #     image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
-
         if not image_batch:
             self.request_desc()
             self.global_request_desc()
@@ -343,9 +319,19 @@ class NoAuthHandler(BaseHandler):
             response[self.uid_key] = uid
             return self.finish(json_encode(response))
 
-        response[self.message_key] = yield self.predict(
-            interface, image_batch, output_split, size_string, start_time, log_params, request_count, uid=uid
+        predict_result = yield self.predict(interface, image_batch, output_split)
+
+        if need_color:
+            need_index = color_extract.predict_color(image_batch=image_batch, color=color_map[need_color])
+            predict_result = "".join([v for i, v in enumerate(predict_result) if i in need_index])
+
+        uid_str = "[{}] - ".format(uid)
+        logger.info('{}[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
+            uid_str, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
+            predict_result,
+            round((time.time() - start_time) * 1000))
         )
+        response[self.message_key] = predict_result
         response[self.uid_key] = uid
         self.executor.submit(self.save_image, uid, response[self.message_key], bytes_batch[0])
         # if interface.model_conf.corp_params and interface.model_conf.output_coord:
@@ -496,16 +482,20 @@ scheduler.start()
 if __name__ == "__main__":
     if platform.system() == 'Windows':
         os.system("chcp 65001")
+        os.system("title=Eve-DL Platform v0.1({})".format(get_version()))
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
+
+    request_limit = system_config.request_limit
+    global_request_limit = system_config.global_request_limit
+
+    parser.add_option('-p', '--port', type="int", default=system_config.default_port, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     opt, args = parser.parse_args()
     server_port = opt.port
-    request_limit = system_config.request_limit
-    global_request_limit = system_config.global_request_limit
+
     workers = opt.workers
     logger = system_config.logger
-    print('=============WITHOUT_LOGGER=============', system_config.without_logger)
+    # print('=============WITHOUT_LOGGER=============', system_config.without_logger)
     tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
     threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
@@ -518,9 +508,7 @@ if __name__ == "__main__":
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.bind(server_port, server_host)
     http_server.start(1)
-    # app.listen(server_port, server_host)
-    try:
-        tornado.ioloop.IOLoop.instance().start()
-    except KeyboardInterrupt:
-        tornado.ioloop.IOLoop.instance().stop()
+    tornado.ioloop.IOLoop.instance().start()
+
+
 

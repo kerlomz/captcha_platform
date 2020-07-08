@@ -68,7 +68,8 @@ class SystemConfig:
             "RequestLimit": -1,
             "GlobalRequestLimit": -1,
             "WithoutLogger": False,
-            "RequestSizeLimit": {}
+            "RequestSizeLimit": {},
+            "DefaultPort": 19952
         },
         "RouteMap": default_route,
         "Security": {
