@@ -24,7 +24,7 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
-from config import Config, blacklist, get_version
+from config import Config, blacklist, set_blacklist, get_version
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from tornado.concurrent import run_on_executor
@@ -33,6 +33,7 @@ from middleware import *
 from event_loop import event_loop
 
 tornado.options.define('ip_blacklist', default=list(), type=list)
+tornado.options.define('ip_risk_times', default=dict(), type=dict)
 tornado.options.define('request_count', default=dict(), type=dict)
 tornado.options.define('global_request_count', default=0, type=int)
 model_path = "model"
@@ -74,6 +75,17 @@ class BaseHandler(RequestHandler):
     @staticmethod
     def global_request_desc():
         tornado.options.options.global_request_count -= 1
+
+    @staticmethod
+    def risk_ip_count(ip):
+        if ip not in tornado.options.options.ip_risk_times:
+            tornado.options.options.ip_risk_times[ip] = 1
+        else:
+            tornado.options.options.ip_risk_times[ip] += 1
+
+    @staticmethod
+    def risk_ip(ip):
+        return tornado.options.options.ip_risk_times[ip]
 
     def data_received(self, chunk):
         pass
@@ -128,6 +140,13 @@ class NoAuthHandler(BaseHandler):
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))
         return result
+
+    @staticmethod
+    def match_blacklist(ip: str):
+        for black_ip in tornado.options.options.ip_blacklist:
+            if ip.startswith(black_ip):
+                return True
+        return False
 
     @tornado.gen.coroutine
     def post(self):
@@ -202,8 +221,26 @@ class NoAuthHandler(BaseHandler):
                 self.status_code_key: -555
             }, ensure_ascii=False))
 
-        assert_blacklist = self.request.remote_ip in tornado.options.options.ip_blacklist
-        if assert_blacklist or request_limit != -1 and request_incr > request_limit:
+        assert_blacklist = self.match_blacklist(self.request.remote_ip)
+        if assert_blacklist:
+            logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                "The ip is on the risk blacklist (IP)",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json.dumps({
+                self.uid_key: uid,
+                self.message_key: system_config.exceeded_msg,
+                self.status_bool_key: False,
+                self.status_code_key: -110
+            }, ensure_ascii=False))
+        if request_limit != -1 and request_incr > request_limit:
+            self.risk_ip_count(self.request.remote_ip)
+            assert_blacklist_trigger = system_config.blacklist_trigger_times != -1
+            if self.risk_ip(self.request.remote_ip) > system_config.blacklist_trigger_times and assert_blacklist_trigger:
+                if self.request.remote_ip not in blacklist():
+                    set_blacklist(self.request.remote_ip)
+                    update_blacklist()
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
                 "Maximum number of requests exceeded (IP)",
@@ -472,7 +509,7 @@ def make_app(route: list):
 
 trigger_specific = IntervalTrigger(seconds=system_config.request_count_interval)
 trigger_global = IntervalTrigger(seconds=system_config.g_request_count_interval)
-trigger_blacklist = IntervalTrigger(seconds=60)
+trigger_blacklist = IntervalTrigger(seconds=10)
 scheduler.add_job(update_blacklist, trigger_blacklist)
 scheduler.add_job(clear_specific_job, trigger_specific)
 scheduler.add_job(clear_global_job, trigger_global)

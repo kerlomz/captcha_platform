@@ -47,7 +47,7 @@ def get_default(src, default):
     return src if src else default
 
 
-def blacklist():
+def blacklist() -> list:
     if not os.path.exists(BLACKLIST_PATH):
         return []
     try:
@@ -57,6 +57,16 @@ def blacklist():
     except Exception as e:
         print(e)
         return []
+
+
+def set_blacklist(ip):
+    try:
+        old_blacklist = blacklist()
+        old_blacklist.append(ip)
+        with open(BLACKLIST_PATH, "w+", encoding="utf8") as f_blacklist:
+            f_blacklist.write(json.dumps(old_blacklist, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(e)
 
 
 class Config(object):
@@ -97,6 +107,7 @@ class Config(object):
             src=self.sys_cf['System'].get('RequestSizeLimit'),
             default={}
         )
+        self.blacklist_trigger_times = get_default(self.sys_cf['System'].get("BlacklistTriggerTimes"), -1)
 
         self.logger_tag = get_default(self.sys_cf['System'].get('LoggerTag'), "coriander")
         self.without_logger = self.sys_cf['System'].get('WithoutLogger')
