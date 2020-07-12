@@ -19,9 +19,9 @@ app = Sanic()
 sign = Signature(ServerType.SANIC)
 parser = optparse.OptionParser()
 
-conf_path = 'config.yaml'
-model_path = 'model'
-graph_path = 'graph'
+conf_path = '../config.yaml'
+model_path = '../model'
+graph_path = '../graph'
 
 system_config = Config(conf_path=conf_path, model_path=model_path, graph_path=graph_path)
 sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])

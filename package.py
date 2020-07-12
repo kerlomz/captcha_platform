@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import os
+import time
 import stat
 import socket
 import paramiko
@@ -10,6 +11,7 @@ import distutils
 import tensorflow as tf
 from enum import Enum, unique
 from utils import SystemUtils
+from config import resource_path
 
 from PyInstaller.__main__ import run, logger
 """ Used to package as a single executable """
@@ -17,6 +19,10 @@ from PyInstaller.__main__ import run, logger
 if platform.system() == 'Linux':
     if distutils.distutils_path.endswith('__init__.py'):
         distutils.distutils_path = os.path.dirname(distutils.distutils_path)
+
+with open("./resource/VERSION", "w", encoding="utf8") as f:
+    today = time.strftime("%Y%m%d", time.localtime(time.time()))
+    f.write(today)
 
 
 @unique

@@ -44,7 +44,7 @@ def blend_arr(img_arr):
     all_slice = img_arr[0]
     for im_slice in img_arr[1:]:
         all_slice = cv2.addWeighted(all_slice, 0.5, im_slice, 0.5, 0)
-    all_slice = cv2.equalizeHist(all_slice)
+    # all_slice = cv2.equalizeHist(all_slice)
     return all_slice
 
 
@@ -53,6 +53,9 @@ def blend_frame(image_obj, need_frame=None):
         need_frame = [-1]
     img_arr = split_frames(image_obj, need_frame)
     img_arr = blend_arr(img_arr)
+    if len(img_arr.shape) > 2 and img_arr.shape[2] == 3:
+        img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2GRAY)
+    img_arr = cv2.equalizeHist(img_arr)
     return img_arr
 
 

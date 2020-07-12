@@ -315,6 +315,7 @@ class ModelConfig(object):
         self.resize: list = self.field_root.get('Resize')
         self.output_split = self.field_root.get('OutputSplit')
         self.output_split = self.output_split if self.output_split else ""
+        self.category_split = self.field_root.get('CategorySplit')
         self.corp_params = self.field_root.get('CorpParams')
         self.output_coord = self.field_root.get('OutputCoord')
         self.batch_model = self.field_root.get('BatchModel')
@@ -516,22 +517,28 @@ class Interface(object):
 
     def predict_func(self, image_batch, _sess, dense_decoded, op_input, model: ModelConfig, output_split=None):
 
-        if output_split is None:
-            output_split = model.output_split
+        output_split = model.output_split if output_split is None else output_split
+
+        category_split = model.category_split if model.category_split else ""
 
         dense_decoded_code = _sess.run(dense_decoded, feed_dict={
             op_input: image_batch,
         })
         decoded_expression = []
-        for item in dense_decoded_code:
-            expression = ''
 
+        for item in dense_decoded_code:
+            expression = []
             for i in item:
                 if i == -1 or i == model.category_num:
-                    expression += ''
+                    expression.append("")
                 else:
-                    expression += self.decode_maps(model.category)[i]
-            decoded_expression.append(expression)
+                    expression.append(self.decode_maps(model.category)[i])
+
+            decoded_expression.append(category_split.join(expression))
+
+        if output_split is None:
+            output_split = model.output_split
+
         return output_split.join(decoded_expression) if len(decoded_expression) > 1 else decoded_expression[0]
 
 

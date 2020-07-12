@@ -7,14 +7,11 @@ import threading
 from concurrent import futures
 
 import grpc
-import grpc_pb2
-import grpc_pb2_grpc
+from compat import grpc_pb2_grpc, grpc_pb2
 import optparse
 from utils import ImageUtils
 from interface import InterfaceManager
 from config import Config
-from event_handler import FileEventHandler
-from watchdog.observers import Observer
 from middleware import *
 from event_loop import event_loop
 

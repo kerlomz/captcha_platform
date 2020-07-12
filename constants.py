@@ -61,13 +61,16 @@ class SystemConfig:
     default_config = {
         "System": {
             "DefaultModel": "default",
-            "SplitFlag": b'\x99\x99\x99\x00\xff\xff\xff\x00\x99\x99\x99',
+            "SplitFlag": b'\x99\x99\x99\x00\xff\xff999999.........99999\xff\x00\x99\x99\x99',
             "SavePath": "",
             "RequestCountInterval": 86400,
             "GlobalRequestCountInterval": 86400,
             "RequestLimit": -1,
             "GlobalRequestLimit": -1,
-            "WithoutLogger": False
+            "WithoutLogger": False,
+            "RequestSizeLimit": {},
+            "DefaultPort": 19952,
+            "BlacklistTriggerTimes": -1,
         },
         "RouteMap": default_route,
         "Security": {

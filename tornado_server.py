@@ -24,7 +24,7 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
-from config import Config
+from config import Config, blacklist, set_blacklist, get_version
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from tornado.concurrent import run_on_executor
@@ -32,6 +32,8 @@ from concurrent.futures import ThreadPoolExecutor
 from middleware import *
 from event_loop import event_loop
 
+tornado.options.define('ip_blacklist', default=list(), type=list)
+tornado.options.define('ip_risk_times', default=dict(), type=dict)
 tornado.options.define('request_count', default=dict(), type=dict)
 tornado.options.define('global_request_count', default=0, type=int)
 model_path = "model"
@@ -50,6 +52,40 @@ class BaseHandler(RequestHandler):
         self.exception = Response(system_config.response_def_map)
         self.executor = ThreadPoolExecutor(workers)
         self.image_utils = ImageUtils(system_config)
+
+    @property
+    def request_incr(self):
+        if self.request.remote_ip not in tornado.options.options.request_count:
+            tornado.options.options.request_count[self.request.remote_ip] = 1
+        else:
+            tornado.options.options.request_count[self.request.remote_ip] += 1
+        return tornado.options.options.request_count[self.request.remote_ip]
+
+    def request_desc(self):
+        if self.request.remote_ip not in tornado.options.options.request_count:
+            return
+        else:
+            tornado.options.options.request_count[self.request.remote_ip] -= 1
+
+    @property
+    def global_request_incr(self):
+        tornado.options.options.global_request_count += 1
+        return tornado.options.options.global_request_count
+
+    @staticmethod
+    def global_request_desc():
+        tornado.options.options.global_request_count -= 1
+
+    @staticmethod
+    def risk_ip_count(ip):
+        if ip not in tornado.options.options.ip_risk_times:
+            tornado.options.options.ip_risk_times[ip] = 1
+        else:
+            tornado.options.options.ip_risk_times[ip] += 1
+
+    @staticmethod
+    def risk_ip(ip):
+        return tornado.options.options.ip_risk_times[ip]
 
     def data_received(self, chunk):
         pass
@@ -97,32 +133,20 @@ class NoAuthHandler(BaseHandler):
                 f.write(image_bytes)
 
     @run_on_executor
-    def predict(self, interface: Interface, image_batch, split_char, size_string, start_time, log_params, request_count, uid=""):
+    def predict(self, interface: Interface, image_batch, split_char):
         result = interface.predict_batch(image_batch, split_char)
         if interface.model_category == 'ARITHMETIC':
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))
-        uid_str = "[{}] - ".format(uid)
-        logger.info('{}[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
-            uid_str, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params, result,
-            round((time.time() - start_time) * 1000))
-        )
-
         return result
 
-    @property
-    def request_incr(self):
-        if self.request.remote_ip not in tornado.options.options.request_count:
-            tornado.options.options.request_count[self.request.remote_ip] = 1
-        else:
-            tornado.options.options.request_count[self.request.remote_ip] += 1
-        return tornado.options.options.request_count[self.request.remote_ip]
-
-    @property
-    def global_request_incr(self):
-        tornado.options.options.global_request_count += 1
-        return tornado.options.options.global_request_count
+    @staticmethod
+    def match_blacklist(ip: str):
+        for black_ip in tornado.options.options.ip_blacklist:
+            if ip.startswith(black_ip):
+                return True
+        return False
 
     @tornado.gen.coroutine
     def post(self):
@@ -147,6 +171,8 @@ class NoAuthHandler(BaseHandler):
         log_params += " - NeedColor[{}]".format(need_color) if need_color else ""
 
         if interface_manager.total == 0:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode(
                 {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
@@ -160,11 +186,28 @@ class NoAuthHandler(BaseHandler):
             )
             return self.finish(json_encode(response))
 
-        # auxiliary_result = None
-
         image_sample = bytes_batch[0]
         image_size = ImageUtils.size_of_image(image_sample)
         size_string = "{}x{}".format(image_size[0], image_size[1])
+        if system_config.request_size_limit and size_string not in system_config.request_size_limit:
+            self.request_desc()
+            self.global_request_desc()
+            logger.info('[{}] - [{} {}] | Size[{}] - [{}][{}] - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, size_string, global_count, log_params,
+                "Image size is invalid.",
+                round((time.time() - start_time) * 1000))
+            )
+            msg = system_config.request_size_limit.get("msg")
+            msg = msg if msg else "The size of the picture is wrong. " \
+                                  "Only the original image is supported. " \
+                                  "Please do not take a screenshot!"
+            return self.finish(json.dumps({
+                self.uid_key: uid,
+                self.message_key: msg,
+                self.status_bool_key: False,
+                self.status_code_key: -250
+            }, ensure_ascii=False))
+
         if global_request_limit != -1 and global_count > global_request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, size_string, global_count, log_params,
@@ -178,7 +221,26 @@ class NoAuthHandler(BaseHandler):
                 self.status_code_key: -555
             }, ensure_ascii=False))
 
+        assert_blacklist = self.match_blacklist(self.request.remote_ip)
+        if assert_blacklist:
+            logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                "The ip is on the risk blacklist (IP)",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json.dumps({
+                self.uid_key: uid,
+                self.message_key: system_config.exceeded_msg,
+                self.status_bool_key: False,
+                self.status_code_key: -110
+            }, ensure_ascii=False))
         if request_limit != -1 and request_incr > request_limit:
+            self.risk_ip_count(self.request.remote_ip)
+            assert_blacklist_trigger = system_config.blacklist_trigger_times != -1
+            if self.risk_ip(self.request.remote_ip) > system_config.blacklist_trigger_times and assert_blacklist_trigger:
+                if self.request.remote_ip not in blacklist():
+                    set_blacklist(self.request.remote_ip)
+                    update_blacklist()
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
                 "Maximum number of requests exceeded (IP)",
@@ -195,6 +257,8 @@ class NoAuthHandler(BaseHandler):
         else:
             interface = interface_manager.get_by_size(size_string)
         if not interface:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('Service is not ready!')
             return self.finish(json_encode(
                 {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
@@ -202,13 +266,13 @@ class NoAuthHandler(BaseHandler):
 
         output_split = output_split if 'output_split' in data else interface.model_conf.output_split
 
-        if need_color:
-            bytes_batch = [color_extract.separate_color(_, color_map[need_color]) for _ in bytes_batch]
-
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
 
-        if interface.model_conf.exec_map and not param_key:
+        exec_map = interface.model_conf.exec_map
+        if exec_map and len(exec_map.keys()) > 1 and not param_key:
+            self.request_desc()
+            self.global_request_desc()
             logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
                 "The model is missing the param_key parameter because the model is configured with ExecuteMap.",
@@ -222,6 +286,24 @@ class NoAuthHandler(BaseHandler):
                     self.status_code_key: 474
                 }
             ))
+        elif exec_map and param_key and param_key not in exec_map:
+            self.request_desc()
+            self.global_request_desc()
+            logger.info('[{}] - [{} {}] | [{}] - Size[{}]{}{} - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
+                "The param_key parameter is not support in the model.",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode(
+                {
+                    self.uid_key: uid,
+                    self.message_key: "Not support the parameter [param_key].",
+                    self.status_bool_key: False,
+                    self.status_code_key: 474
+                }
+            ))
+        elif exec_map and len(exec_map.keys()) == 1:
+            param_key = list(interface.model_conf.exec_map.keys())[0]
 
         if interface.model_conf.external_model and interface.model_conf.corp_params:
             result = []
@@ -261,25 +343,9 @@ class NoAuthHandler(BaseHandler):
         else:
             image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
 
-        # if interface.model_conf.batch_model:
-        #     auxiliary_index = list(interface.model_conf.batch_model.keys())[0]
-        #     auxiliary_name = list(interface.model_conf.batch_model.values())[0]
-        #     auxiliary_interface = interface_manager.get_by_name(auxiliary_name)
-        #     auxiliary_image_batch, response = ImageUtils.get_image_batch(
-        #         auxiliary_interface.model_conf,
-        #         bytes_batch,
-        #         param_key=param_key
-        #     )
-        #     auxiliary_result = yield self.predict(
-        #         auxiliary_interface,
-        #         auxiliary_image_batch[auxiliary_index: auxiliary_index+1],
-        #         output_split,
-        #         size_string,
-        #         start_time
-        #     )
-        #     image_batch = np.delete(image_batch, auxiliary_index, axis=0).tolist()
-
         if not image_batch:
+            self.request_desc()
+            self.global_request_desc()
             logger.error('[{}] - [{} {}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, interface.name, size_string, response,
                 round((time.time() - start_time) * 1000))
@@ -287,9 +353,21 @@ class NoAuthHandler(BaseHandler):
             response[self.uid_key] = uid
             return self.finish(json_encode(response))
 
-        response[self.message_key] = yield self.predict(
-            interface, image_batch, output_split, size_string, start_time, log_params, request_count, uid=uid
+        predict_result = yield self.predict(interface, image_batch, output_split)
+
+        if need_color:
+            # only support six label and size [90x35].
+            color_batch = np.resize(image_batch[0], (90, 35, 3))
+            need_index = color_extract.predict_color(image_batch=[color_batch], color=color_map[need_color])
+            predict_result = "".join([v for i, v in enumerate(predict_result) if i in need_index])
+
+        uid_str = "[{}] - ".format(uid)
+        logger.info('{}[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
+            uid_str, self.request.remote_ip, self.request.uri, interface.name, size_string, request_count, log_params,
+            predict_result,
+            round((time.time() - start_time) * 1000))
         )
+        response[self.message_key] = predict_result
         response[self.uid_key] = uid
         self.executor.submit(self.save_image, uid, response[self.message_key], bytes_batch[0])
         # if interface.model_conf.corp_params and interface.model_conf.output_coord:
@@ -313,16 +391,19 @@ class AuthHandler(NoAuthHandler):
 
 class SimpleHandler(BaseHandler):
 
+    uid_key: str = system_config.response_def_map['Uid']
     message_key: str = system_config.response_def_map['Message']
     status_bool_key = system_config.response_def_map['StatusBool']
     status_code_key = system_config.response_def_map['StatusCode']
 
     def post(self):
+        uid = str(uuid.uuid1())
+        param_key = None
         start_time = time.time()
         if interface_manager.total == 0:
             logger.info('There is currently no model deployment and services are not available.')
             return self.finish(json_encode(
-                {self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
+                {self.uid_key: uid, self.message_key: "", self.status_bool_key: False, self.status_code_key: -999}
             ))
 
         bytes_batch, response = self.image_utils.get_bytes_batch(self.request.body)
@@ -345,20 +426,37 @@ class SimpleHandler(BaseHandler):
                 {self.message_key: "", self.status_bool_key: False, self.status_code_key: 999}
             ))
 
-        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=None)
+        exec_map = interface.model_conf.exec_map
+        if exec_map and len(exec_map.keys()) > 1:
+            logger.info('[{}] - [{} {}] | [{}] - Size[{}] - Error[{}] - {} ms'.format(
+                uid, self.request.remote_ip, self.request.uri, interface.name, size_string,
+                "The model is configured with ExecuteMap, but the api do not support this param.",
+                round((time.time() - start_time) * 1000))
+            )
+            return self.finish(json_encode(
+                {
+                    self.message_key: "the api do not support [ExecuteMap].",
+                    self.status_bool_key: False,
+                    self.status_code_key: 474
+                }
+            ))
+        elif exec_map and len(exec_map.keys()) == 1:
+            param_key = list(interface.model_conf.exec_map.keys())[0]
+
+        image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
 
         if not image_batch:
-            logger.error('[{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
-
-                self.request.remote_ip, interface.name, size_string, response,
+            logger.error('[{}] - [{}] | [{}] - Size[{}] - Response[{}] - {} ms'.format(
+                uid, self.request.remote_ip, interface.name, size_string, response,
                 (time.time() - start_time) * 1000)
             )
             return self.finish(json_encode(response))
 
         result = interface.predict_batch(image_batch, None)
-        logger.info('[{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
-            self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
+        logger.info('[{}] - [{}] | [{}] - Size[{}] - Predict[{}] - {} ms'.format(
+            uid, self.request.remote_ip, interface.name, size_string, result, (time.time() - start_time) * 1000)
         )
+        response[self.uid_key] = uid
         response[self.message_key] = result
         return self.write(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
@@ -369,7 +467,8 @@ class ServiceHandler(BaseHandler):
         response = {
             "total": interface_manager.total,
             "online": interface_manager.online_names,
-            "invalid": interface_manager.invalid_group
+            "invalid": interface_manager.invalid_group,
+            "blacklist": tornado.options.options.ip_blacklist
         }
         return self.finish(json.dumps(response, ensure_ascii=False, indent=2))
 
@@ -396,6 +495,10 @@ def clear_global_job():
     tornado.options.options.global_request_count = 0
 
 
+def update_blacklist():
+    tornado.options.options.ip_blacklist = blacklist()
+
+
 def make_app(route: list):
     return tornado.web.Application([
         (i['Route'], globals()[i['Class']], i.get("Param"))
@@ -406,6 +509,8 @@ def make_app(route: list):
 
 trigger_specific = IntervalTrigger(seconds=system_config.request_count_interval)
 trigger_global = IntervalTrigger(seconds=system_config.g_request_count_interval)
+trigger_blacklist = IntervalTrigger(seconds=10)
+scheduler.add_job(update_blacklist, trigger_blacklist)
 scheduler.add_job(clear_specific_job, trigger_specific)
 scheduler.add_job(clear_global_job, trigger_global)
 scheduler.start()
@@ -413,16 +518,20 @@ scheduler.start()
 if __name__ == "__main__":
     if platform.system() == 'Windows':
         os.system("chcp 65001")
+        os.system("title=Eve-DL Platform v0.1({})".format(get_version()))
     parser = optparse.OptionParser()
-    parser.add_option('-p', '--port', type="int", default=19952, dest="port")
+
+    request_limit = system_config.request_limit
+    global_request_limit = system_config.global_request_limit
+
+    parser.add_option('-p', '--port', type="int", default=system_config.default_port, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     opt, args = parser.parse_args()
     server_port = opt.port
-    request_limit = system_config.request_limit
-    global_request_limit = system_config.global_request_limit
+
     workers = opt.workers
     logger = system_config.logger
-    print('=============WITHOUT_LOGGER=============', system_config.without_logger)
+    # print('=============WITHOUT_LOGGER=============', system_config.without_logger)
     tornado.log.enable_pretty_logging(logger=logger)
     interface_manager = InterfaceManager()
     threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
@@ -435,9 +544,7 @@ if __name__ == "__main__":
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.bind(server_port, server_host)
     http_server.start(1)
-    # app.listen(server_port, server_host)
-    try:
-        tornado.ioloop.IOLoop.instance().start()
-    except KeyboardInterrupt:
-        tornado.ioloop.IOLoop.instance().stop()
+    tornado.ioloop.IOLoop.instance().start()
+
+
 
