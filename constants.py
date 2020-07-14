@@ -71,6 +71,7 @@ class SystemConfig:
             "RequestSizeLimit": {},
             "DefaultPort": 19952,
             "BlacklistTriggerTimes": -1,
+            "Whitelist": False
         },
         "RouteMap": default_route,
         "Security": {

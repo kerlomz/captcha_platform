@@ -22,6 +22,7 @@ MODEL_FIELD_MAP = {
 }
 
 BLACKLIST_PATH = "blacklist.json"
+WHITELIST_PATH = "whitelist.json"
 
 
 def resource_path(relative_path):
@@ -57,6 +58,18 @@ def blacklist() -> list:
     except Exception as e:
         print(e)
         return []
+
+
+def whitelist() -> list:
+    if not os.path.exists(WHITELIST_PATH):
+        return ["127.0.0.1", "localhost"]
+    try:
+        with open(WHITELIST_PATH, "r", encoding="utf8") as f_whitelist:
+            result = json.loads("".join(f_whitelist.readlines()))
+            return result
+    except Exception as e:
+        print(e)
+        return ["127.0.0.1", "localhost"]
 
 
 def set_blacklist(ip):
@@ -109,6 +122,10 @@ class Config(object):
         )
         self.blacklist_trigger_times = get_default(self.sys_cf['System'].get("BlacklistTriggerTimes"), -1)
 
+        self.use_whitelist: dict = get_default(
+            src=self.sys_cf['System'].get('Whitelist'),
+            default=False
+        )
         self.logger_tag = get_default(self.sys_cf['System'].get('LoggerTag'), "coriander")
         self.without_logger = self.sys_cf['System'].get('WithoutLogger')
         self.without_logger = self.without_logger if self.without_logger is not None else False

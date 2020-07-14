@@ -24,7 +24,7 @@ from constants import Response
 from json.decoder import JSONDecodeError
 from tornado.escape import json_decode, json_encode
 from interface import InterfaceManager, Interface
-from config import Config, blacklist, set_blacklist, get_version
+from config import Config, blacklist, set_blacklist, whitelist, get_version
 from utils import ImageUtils, ParamUtils, Arithmetic
 from signature import Signature, ServerType
 from tornado.concurrent import run_on_executor
@@ -33,6 +33,7 @@ from middleware import *
 from event_loop import event_loop
 
 tornado.options.define('ip_blacklist', default=list(), type=list)
+tornado.options.define('ip_whitelist', default=list(), type=list)
 tornado.options.define('ip_risk_times', default=dict(), type=dict)
 tornado.options.define('request_count', default=dict(), type=dict)
 tornado.options.define('global_request_count', default=0, type=int)
@@ -148,6 +149,13 @@ class NoAuthHandler(BaseHandler):
                 return True
         return False
 
+    @staticmethod
+    def match_whitelist(ip: str):
+        for white_ip in tornado.options.options.ip_whitelist:
+            if ip.startswith(white_ip):
+                return True
+        return False
+
     @tornado.gen.coroutine
     def post(self):
         uid = str(uuid.uuid1())
@@ -207,6 +215,21 @@ class NoAuthHandler(BaseHandler):
                 self.status_bool_key: False,
                 self.status_code_key: -250
             }, ensure_ascii=False))
+
+        if system_config.use_whitelist:
+            assert_whitelist = self.match_whitelist(self.request.remote_ip)
+            if not assert_whitelist:
+                logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
+                    uid, self.request.remote_ip, self.request.uri, size_string, request_count, log_params,
+                    "Whitelist limit",
+                    round((time.time() - start_time) * 1000))
+                )
+                return self.finish(json.dumps({
+                    self.uid_key: uid,
+                    self.message_key: "Only allow IP access in the whitelist",
+                    self.status_bool_key: False,
+                    self.status_code_key: -111
+                }, ensure_ascii=False))
 
         if global_request_limit != -1 and global_count > global_request_limit:
             logger.info('[{}] - [{} {}] | Size[{}]{}{} - Error[{}] - {} ms'.format(
@@ -537,6 +560,8 @@ if __name__ == "__main__":
     threading.Thread(target=lambda: event_loop(system_config, model_path, interface_manager)).start()
 
     sign.set_auth([{'accessKey': system_config.access_key, 'secretKey': system_config.secret_key}])
+
+    tornado.options.options.ip_whitelist = whitelist()
 
     server_host = "0.0.0.0"
     logger.info('Running on http://{}:{}/ <Press CTRL + C to quit>'.format(server_host, server_port))
