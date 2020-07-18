@@ -103,18 +103,12 @@ class BaseHandler(RequestHandler):
         return data
 
     def write_error(self, code, **kw):
-        system = {
-            500: dict(StatusCode=code, Message="Internal Server Error", StatusBool=False),
-            400: dict(StatusCode=code, Message="Bad Request", StatusBool=False),
-            404: dict(StatusCode=code, Message="404 Not Found", StatusBool=False),
-            403: dict(StatusCode=code, Message="Forbidden", StatusBool=False),
-            405: dict(StatusCode=code, Message="Method Not Allowed", StatusBool=False),
-        }
-        if code in system.keys():
-            code_dict = Response.parse(system.get(code), system_config.response_def_map)
+        err_resp = dict(StatusCode=code, Message=system_config.error_message[code], StatusBool=False)
+        if code in system_config.error_message:
+            code_dict = Response.parse(err_resp, system_config.response_def_map)
         else:
             code_dict = self.exception.find(code)
-        return self.finish(json_encode(code_dict))
+        return self.finish(json.dumps(code_dict, ensure_ascii=False))
 
 
 class NoAuthHandler(BaseHandler):
@@ -539,9 +533,6 @@ scheduler.add_job(clear_global_job, trigger_global)
 scheduler.start()
 
 if __name__ == "__main__":
-    if platform.system() == 'Windows':
-        os.system("chcp 65001")
-        os.system("title=Eve-DL Platform v0.1({})".format(get_version()))
     parser = optparse.OptionParser()
 
     request_limit = system_config.request_limit
@@ -551,6 +542,10 @@ if __name__ == "__main__":
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
     opt, args = parser.parse_args()
     server_port = opt.port
+
+    if platform.system() == 'Windows':
+        os.system("chcp 65001")
+        os.system("title=Eve-DL Platform v0.1({}) | [{}]".format(get_version(), server_port))
 
     workers = opt.workers
     logger = system_config.logger

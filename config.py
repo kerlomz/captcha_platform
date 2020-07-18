@@ -48,6 +48,14 @@ def get_default(src, default):
     return src if src else default
 
 
+def get_dict_fill(src: dict, default: dict):
+    if not src:
+        return default
+    new_dict = default
+    new_dict.update(src)
+    return new_dict
+
+
 def blacklist() -> list:
     if not os.path.exists(BLACKLIST_PATH):
         return []
@@ -125,6 +133,10 @@ class Config(object):
         self.use_whitelist: dict = get_default(
             src=self.sys_cf['System'].get('Whitelist'),
             default=False
+        )
+
+        self.error_message = get_dict_fill(
+            self.sys_cf['System'].get('ErrorMessage'), SystemConfig.default_config['System']['ErrorMessage']
         )
         self.logger_tag = get_default(self.sys_cf['System'].get('LoggerTag'), "coriander")
         self.without_logger = self.sys_cf['System'].get('WithoutLogger')
