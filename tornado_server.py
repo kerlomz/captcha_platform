@@ -165,6 +165,7 @@ class NoAuthHandler(BaseHandler):
         output_split = ParamUtils.filter(data.get('output_split'))
         need_color = ParamUtils.filter(data.get('need_color'))
         param_key = ParamUtils.filter(data.get('param_key'))
+        extract_rgb = ParamUtils.filter(data.get('extract_rgb'))
 
         request_incr = self.request_incr
         global_count = self.global_request_incr
@@ -358,7 +359,12 @@ class NoAuthHandler(BaseHandler):
                 )
             return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
         else:
-            image_batch, response = ImageUtils.get_image_batch(interface.model_conf, bytes_batch, param_key=param_key)
+            image_batch, response = ImageUtils.get_image_batch(
+                interface.model_conf,
+                bytes_batch,
+                param_key=param_key,
+                extract_rgb=extract_rgb
+            )
 
         if not image_batch:
             self.request_desc()

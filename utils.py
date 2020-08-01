@@ -18,6 +18,7 @@ from constants import Response, SystemConfig
 from pretreatment import preprocessing, preprocessing_by_func
 from config import ModelConfig, Config
 from middleware.impl.gif_frames import concat_frames, blend_frame
+from middleware.impl.rgb_filter import rgb_filter
 
 
 class Arithmetic(object):
@@ -97,7 +98,8 @@ class ImageUtils(object):
                 else:
                     bytes_batch = [base64_or_bytes]
             elif isinstance(base64_or_bytes, list):
-                bytes_batch = [base64.b64decode(b64_filter_s(i).encode('utf-8')) for i in base64_or_bytes if isinstance(i, str)]
+                bytes_batch = [base64.b64decode(b64_filter_s(i).encode('utf-8')) for i in base64_or_bytes if
+                               isinstance(i, str)]
                 if not bytes_batch:
                     bytes_batch = [base64.b64decode(b64_filter_b(i)) for i in base64_or_bytes if isinstance(i, bytes)]
             else:
@@ -112,7 +114,7 @@ class ImageUtils(object):
         return bytes_batch, response.SUCCESS
 
     @staticmethod
-    def get_image_batch(model: ModelConfig, bytes_batch, param_key=None):
+    def get_image_batch(model: ModelConfig, bytes_batch, param_key=None, extract_rgb: list = None):
         # Note that there are two return objects here.
         # 1.image_batch, 2.response
 
@@ -143,6 +145,9 @@ class ImageUtils(object):
                 im = blend_frame(pil_image, model.pre_blend_frames)
             else:
                 im = np.asarray(pil_image)
+
+            if extract_rgb:
+                im = rgb_filter(im, extract_rgb)
 
             im = preprocessing_by_func(
                 exec_map=model.exec_map,
