@@ -378,11 +378,11 @@ class NoAuthHandler(BaseHandler):
 
         predict_result = yield self.predict(interface, image_batch, output_split)
 
-        if need_color:
-            # only support six label and size [90x35].
-            color_batch = np.resize(image_batch[0], (90, 35, 3))
-            need_index = color_extract.predict_color(image_batch=[color_batch], color=color_map[need_color])
-            predict_result = "".join([v for i, v in enumerate(predict_result) if i in need_index])
+        # if need_color:
+        #     # only support six label and size [90x35].
+        #     color_batch = np.resize(image_batch[0], (90, 35, 3))
+        #     need_index = color_extract.predict_color(image_batch=[color_batch], color=color_map[need_color])
+        #     predict_result = "".join([v for i, v in enumerate(predict_result) if i in need_index])
 
         uid_str = "[{}] - ".format(uid)
         logger.info('{}[{} {}] | [{}] - Size[{}]{}{} - Predict[{}] - {} ms'.format(
