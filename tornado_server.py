@@ -393,15 +393,15 @@ class NoAuthHandler(BaseHandler):
         response[self.message_key] = predict_result
         response[self.uid_key] = uid
         self.executor.submit(self.save_image, uid, response[self.message_key], bytes_batch[0])
-        # if interface.model_conf.corp_params and interface.model_conf.output_coord:
-        #     # final_result = auxiliary_result + "," + response[self.message_key]
-        #     # if auxiliary_result else response[self.message_key]
-        #     final_result = response[self.message_key]
-        #     response[self.message_key] = corp_to_multi.get_coordinate(
-        #         label=final_result,
-        #         param_group=interface.model_conf.corp_params,
-        #         title_index=[0]
-        #     )
+        if interface.model_conf.corp_params and interface.model_conf.output_coord:
+            # final_result = auxiliary_result + "," + response[self.message_key]
+            # if auxiliary_result else response[self.message_key]
+            final_result = response[self.message_key]
+            response[self.message_key] = corp_to_multi.get_coordinate(
+                label=final_result,
+                param_group=interface.model_conf.corp_params,
+                title_index=[0]
+            )
         return self.finish(json.dumps(response, ensure_ascii=False).replace("</", "<\\/"))
 
 
@@ -551,7 +551,7 @@ if __name__ == "__main__":
 
     if platform.system() == 'Windows':
         os.system("chcp 65001")
-        os.system("title=Eve-DL Platform v0.1({}) | [{}]".format(get_version(), server_port))
+        os.system("title=Eve-DL Platform v0.1({}) ^| [{}]".format(get_version(), server_port))
 
     workers = opt.workers
     logger = system_config.logger
