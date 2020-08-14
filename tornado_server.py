@@ -54,6 +54,11 @@ class BaseHandler(RequestHandler):
         self.executor = ThreadPoolExecutor(workers)
         self.image_utils = ImageUtils(system_config)
 
+    def set_default_header(self):
+        self.set_header('Access-Control-Allow-Origin', '*')
+        self.set_header('Access-Control-Allow-Headers', 'x-requested-with')
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE')
+
     @property
     def request_incr(self):
         if self.request.remote_ip not in tornado.options.options.request_count:
@@ -550,7 +555,7 @@ if __name__ == "__main__":
     server_port = opt.port
 
     if platform.system() == 'Windows':
-        os.system("chcp 65001")
+        # os.system("chcp 65001")
         os.system("title=Eve-DL Platform v0.1({}) ^| [{}]".format(get_version(), server_port))
 
     workers = opt.workers
