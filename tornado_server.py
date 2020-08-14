@@ -155,8 +155,8 @@ class NoAuthHandler(BaseHandler):
                 return True
         return False
 
-    def option(self):
-        return self.post()
+    async def options(self):
+        return self.finish()
 
     @tornado.gen.coroutine
     def post(self):
