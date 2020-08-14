@@ -54,11 +54,6 @@ class BaseHandler(RequestHandler):
         self.executor = ThreadPoolExecutor(workers)
         self.image_utils = ImageUtils(system_config)
 
-    def set_default_header(self):
-        self.set_header('Access-Control-Allow-Origin', '*')
-        self.set_header('Access-Control-Allow-Headers', 'x-requested-with')
-        self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE')
-
     @property
     def request_incr(self):
         if self.request.remote_ip not in tornado.options.options.request_count:
@@ -117,7 +112,6 @@ class BaseHandler(RequestHandler):
 
 
 class NoAuthHandler(BaseHandler):
-
     uid_key: str = system_config.response_def_map['Uid']
     message_key: str = system_config.response_def_map['Message']
     status_bool_key = system_config.response_def_map['StatusBool']
@@ -156,6 +150,7 @@ class NoAuthHandler(BaseHandler):
         return False
 
     async def options(self):
+        self.set_status(204)
         return self.finish()
 
     @tornado.gen.coroutine
@@ -263,7 +258,8 @@ class NoAuthHandler(BaseHandler):
         if request_limit != -1 and request_incr > request_limit:
             self.risk_ip_count(self.request.remote_ip)
             assert_blacklist_trigger = system_config.blacklist_trigger_times != -1
-            if self.risk_ip(self.request.remote_ip) > system_config.blacklist_trigger_times and assert_blacklist_trigger:
+            if self.risk_ip(
+                    self.request.remote_ip) > system_config.blacklist_trigger_times and assert_blacklist_trigger:
                 if self.request.remote_ip not in blacklist():
                     set_blacklist(self.request.remote_ip)
                     update_blacklist()
@@ -350,7 +346,8 @@ class NoAuthHandler(BaseHandler):
                 )
 
                 text = yield self.predict(
-                    sub_interface, image_batch, output_split, size_string, start_time, log_params, request_count, uid=uid
+                    sub_interface, image_batch, output_split, size_string, start_time, log_params, request_count,
+                    uid=uid
                 )
                 result.append(text)
                 len_of_result.append(len(result[0].split(sub_interface.model_conf.category_split)))
@@ -421,7 +418,6 @@ class AuthHandler(NoAuthHandler):
 
 
 class SimpleHandler(BaseHandler):
-
     uid_key: str = system_config.response_def_map['Uid']
     message_key: str = system_config.response_def_map['Message']
     status_bool_key = system_config.response_def_map['StatusBool']
@@ -531,11 +527,14 @@ def update_blacklist():
 
 
 def make_app(route: list):
-    return tornado.web.Application([
-        (i['Route'], globals()[i['Class']], i.get("Param"))
-        if "Param" in i else
-        (i['Route'], globals()[i['Class']]) for i in route
-    ])
+    return tornado.web.Application(
+        [
+            (i['Route'], globals()[i['Class']], i.get("Param"))
+            if "Param" in i else
+            (i['Route'], globals()[i['Class']]) for i in route
+        ],
+        static_path=os.path.join(os.path.dirname(__file__), "resource"),
+    )
 
 
 trigger_specific = IntervalTrigger(seconds=system_config.request_count_interval)
@@ -579,6 +578,3 @@ if __name__ == "__main__":
     http_server.bind(server_port, server_host)
     http_server.start(1)
     tornado.ioloop.IOLoop.instance().start()
-
-
-

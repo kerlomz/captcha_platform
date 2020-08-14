@@ -4,7 +4,7 @@
 
 block_cipher = None
 
-added_files = [('resource/icon.ico', 'resource'), ('resource/VERSION', 'astor'), ('resource/VERSION', '.')]
+added_files = [('resource/icon.ico', 'resource'), ('resource/favorite.ico', '.'), ('resource/VERSION', 'astor'), ('resource/VERSION', '.')]
 
 a = Analysis(['tornado_server.py'],
              pathex=['.'],
