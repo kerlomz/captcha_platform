@@ -155,6 +155,9 @@ class NoAuthHandler(BaseHandler):
                 return True
         return False
 
+    def option(self):
+        return self.post()
+
     @tornado.gen.coroutine
     def post(self):
         uid = str(uuid.uuid1())
