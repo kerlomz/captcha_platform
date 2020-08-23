@@ -185,6 +185,18 @@ class NoAuthHandler(BaseHandler):
             ))
         bytes_batch, response = self.image_utils.get_bytes_batch(data[input_data_key])
 
+        if not (opt.low_hour == -1 or opt.up_hour == -1) and not (opt.low_hour <= time.localtime().tm_hour <= opt.up_hour):
+            logger.info("[{}] - [{} {}] | - Response[{}] - {} ms".format(
+                uid, self.request.remote_ip, self.request.uri, "Not in open time.",
+                (time.time() - start_time) * 1000)
+            )
+            return self.finish(json.dumps({
+                self.uid_key: uid,
+                self.message_key: system_config.illegal_time_msg.format(opt.low_hour, opt.up_hour),
+                self.status_bool_key: False,
+                self.status_code_key: -250
+            }, ensure_ascii=False))
+
         if not bytes_batch:
             logger.error('[{}] - [{} {}] | - Response[{}] - {} ms'.format(
                 uid, self.request.remote_ip, self.request.uri, response,
@@ -553,6 +565,9 @@ if __name__ == "__main__":
 
     parser.add_option('-p', '--port', type="int", default=system_config.default_port, dest="port")
     parser.add_option('-w', '--workers', type="int", default=50, dest="workers")
+    parser.add_option('--up_hour', type="int", default=-1, dest="up_hour")
+    parser.add_option('--low_hour', type="int", default=-1, dest="low_hour")
+
     opt, args = parser.parse_args()
     server_port = opt.port
 

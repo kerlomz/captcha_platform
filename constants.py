@@ -70,6 +70,8 @@ class SystemConfig:
             "WithoutLogger": False,
             "RequestSizeLimit": {},
             "DefaultPort": 19952,
+            "IllegalTimeMessage": "The maximum number of requests has been exceeded.",
+            "ExceededMessage": "Illegal access time, please request in open hours.",
             "BlacklistTriggerTimes": -1,
             "Whitelist": False,
             "ErrorMessage": {

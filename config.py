@@ -121,7 +121,11 @@ class Config(object):
         self.global_request_limit = get_default(self.sys_cf['System'].get("GlobalRequestLimit"), -1)
         self.exceeded_msg = get_default(
             src=self.sys_cf['System'].get("ExceededMessage"),
-            default="The maximum number of requests has been exceeded"
+            default=SystemConfig.default_config['System'].get('ExceededMessage')
+        )
+        self.illegal_time_msg = get_default(
+            src=self.sys_cf['System'].get("IllegalTimeMessage"),
+            default=SystemConfig.default_config['System'].get('IllegalTimeMessage')
         )
 
         self.request_size_limit: dict = get_default(
