@@ -5,7 +5,7 @@ gevent-websocket>=0.10.1
 tensorflow==1.14.0
 pillow>=4.3.0
 opencv-python==3.4.5.20
-numpy==1.16.0
+numpy>=1.16.0
 grpcio>=1.14.2
 grpcio_tools>=1.14.2
 requests>=2.18.4
