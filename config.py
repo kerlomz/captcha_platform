@@ -300,6 +300,8 @@ class ModelConfig(Model):
         self.image_channel: int = self.field_root.get('ImageChannel')
         self.image_width: int = self.field_root.get('ImageWidth')
         self.image_height: int = self.field_root.get('ImageHeight')
+        self.max_label_num: int = self.field_root.get('MaxLabelNum')
+        self.min_label_num: int = self.get_var(self.field_root, 'MinLabelNum', self.max_label_num)
         self.resize: list = self.field_root.get('Resize')
         self.output_split = self.field_root.get('OutputSplit')
         self.output_split = self.output_split if self.output_split else ""
@@ -316,6 +318,7 @@ class ModelConfig(Model):
         self.pre_horizontal_stitching = self.get_var(self.pretreatment_root, 'HorizontalStitching', False)
         self.pre_concat_frames = self.get_var(self.pretreatment_root, 'ConcatFrames', -1)
         self.pre_blend_frames = self.get_var(self.pretreatment_root, 'BlendFrames', -1)
+        self.pre_freq_frames = self.get_var(self.pretreatment_root, 'FreqFrames', -1)
         self.exec_map = self.get_var(self.pretreatment_root, 'ExecuteMap', None)
 
         """COMPILE_MODEL"""
@@ -342,7 +345,7 @@ class ModelConfig(Model):
 
     @staticmethod
     def get_var(src: dict, name: str, default=None):
-        if not src:
+        if not src or name not in src:
             return default
         return src.get(name)
 

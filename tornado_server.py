@@ -287,9 +287,9 @@ class NoAuthHandler(BaseHandler):
                 self.status_code_key: -444
             }, ensure_ascii=False))
         if model_name_key in data and data[model_name_key]:
-            interface = interface_manager.get_by_name(model_name)
+            interface: Interface = interface_manager.get_by_name(model_name)
         else:
-            interface = interface_manager.get_by_size(size_string)
+            interface: Interface = interface_manager.get_by_size(size_string)
         if not interface:
             self.request_desc()
             self.global_request_desc()
@@ -302,7 +302,8 @@ class NoAuthHandler(BaseHandler):
 
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
-
+        if interface.model_conf.pre_freq_frames:
+            bytes_batch = gif_frames.all_frames(bytes_batch)
         exec_map = interface.model_conf.exec_map
         if exec_map and len(exec_map.keys()) > 1 and not param_key:
             self.request_desc()
@@ -394,7 +395,13 @@ class NoAuthHandler(BaseHandler):
             return self.finish(json_encode(response))
 
         predict_result = yield self.predict(interface, image_batch, output_split)
-
+        if interface.model_conf.pre_freq_frames:
+            predict_result = predict_result.split(interface.model_conf.output_split)
+            predict_result = [
+                i for i in predict_result
+                if interface.model_conf.max_label_num >= len(i) >= interface.model_conf.min_label_num
+            ]
+            predict_result = gif_frames.get_continuity_max(predict_result)
         # if need_color:
         #     # only support six label and size [90x35].
         #     color_batch = np.resize(image_batch[0], (90, 35, 3))

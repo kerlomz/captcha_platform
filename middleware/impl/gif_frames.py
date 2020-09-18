@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
-
+import io
 import cv2
 import numpy as np
-from PIL import ImageSequence
+from itertools import groupby
+from PIL import ImageSequence, Image
 
 
 def split_frames(image_obj, need_frame=None):
@@ -57,6 +58,28 @@ def blend_frame(image_obj, need_frame=None):
         img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2GRAY)
     img_arr = cv2.equalizeHist(img_arr)
     return img_arr
+
+
+def all_frames(image_obj):
+    if isinstance(image_obj, list):
+        image_obj = image_obj[0]
+    stream = io.BytesIO(image_obj)
+    pil_image = Image.open(stream)
+    image_seq = ImageSequence.all_frames(pil_image)
+    array_seq = [np.asarray(im.convert("RGB")) for im in image_seq]
+    # [1::2]
+    bytes_arr = [cv2.imencode('.png', img_arr)[1] for img_arr in array_seq]
+    split_flag = b'\x99\x99\x99\x00\xff\xff999999.........99999\xff\x00\x99\x99\x99'
+    return split_flag.join(bytes_arr).split(split_flag)
+
+
+def get_continuity_max(src: list):
+    if not src:
+        return ""
+    elem_cont_len = lambda x: max(len(list(g)) for k, g in groupby(src) if k == x)
+    target_list = [elem_cont_len(i) for i in src]
+    target_index = target_list.index(max(target_list))
+    return src[target_index]
 
 
 if __name__ == "__main__":

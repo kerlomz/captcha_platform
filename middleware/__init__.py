@@ -4,7 +4,7 @@
 
 # from middleware.impl import color_filter
 from middleware.impl import corp_to_multi
-
+from middleware.impl import gif_frames
 # color_extract = color_filter.ColorFilter()
 # color_map = color_filter.color_map
 

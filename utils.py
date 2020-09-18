@@ -109,6 +109,7 @@ class ImageUtils(object):
         except binascii.Error:
             return None, response.INVALID_BASE64_STRING
         what_img = [ImageUtils.test_image(i) for i in bytes_batch]
+
         if None in what_img:
             return None, response.INVALID_IMAGE_FORMAT
         return bytes_batch, response.SUCCESS
@@ -120,7 +121,7 @@ class ImageUtils(object):
 
         response = Response(model.conf.response_def_map)
 
-        def load_image(image_bytes):
+        def load_image(image_bytes: bytes):
             data_stream = io.BytesIO(image_bytes)
             pil_image = PIL_Image.open(data_stream)
 
