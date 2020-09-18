@@ -395,7 +395,7 @@ class NoAuthHandler(BaseHandler):
             return self.finish(json_encode(response))
 
         predict_result = yield self.predict(interface, image_batch, output_split)
-        if interface.model_conf.pre_freq_frames:
+        if interface.model_conf.pre_freq_frames != -1:
             predict_result = predict_result.split(interface.model_conf.output_split)
             predict_result = [
                 i for i in predict_result
