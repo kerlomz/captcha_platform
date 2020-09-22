@@ -302,7 +302,7 @@ class NoAuthHandler(BaseHandler):
 
         if interface.model_conf.corp_params:
             bytes_batch = corp_to_multi.parse_multi_img(bytes_batch, interface.model_conf.corp_params)
-        if interface.model_conf.pre_freq_frames:
+        if interface.model_conf.pre_freq_frames != -1:
             bytes_batch = gif_frames.all_frames(bytes_batch)
         exec_map = interface.model_conf.exec_map
         if exec_map and len(exec_map.keys()) > 1 and not param_key:
