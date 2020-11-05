@@ -129,7 +129,7 @@ class NoAuthHandler(BaseHandler):
     @run_on_executor
     def predict(self, interface: Interface, image_batch, split_char):
         result = interface.predict_batch(image_batch, split_char)
-        if interface.model_category == 'ARITHMETIC':
+        if 'ARITHMETIC' in interface.model_category:
             if '=' in result or '+' in result or '-' in result or '×' in result or '÷' in result:
                 result = result.replace("×", "*").replace("÷", "/")
                 result = str(int(arithmetic.calc(result)))

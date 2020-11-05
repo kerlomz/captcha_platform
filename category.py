@@ -8,7 +8,7 @@ ALPHA_UPPER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
                'V', 'W', 'X', 'Y', 'Z']
 ALPHA_LOWER = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
                'v', 'w', 'x', 'y', 'z']
-ARITHMETIC = ['(', ')', '+', '-', '×', '÷', '=']
+ARITHMETIC = ['(', ')', '+', '-', '×', '÷', '=', '?']
 CHINESE_3500 = [
     '一', '乙', '二', '十', '丁', '厂', '七', '卜', '人', '入', '八', '九', '几', '儿', '了', '力', '乃', '刀', '又', '三',
     '于', '干', '亏', '士', '工', '土', '才', '寸', '下', '大', '丈', '与', '万', '上', '小', '口', '巾', '山', '千', '乞',
@@ -501,6 +501,7 @@ SIMPLE_CATEGORY_MODEL = dict(
     ALPHABET_UPPER=ALPHA_UPPER,
     ALPHABET=ALPHA_LOWER + ALPHA_UPPER,
     ARITHMETIC=NUMBER + ARITHMETIC,
+    ARITHMETIC_MIX_ALPHA_LOWER=NUMBER + ARITHMETIC + ALPHA_LOWER,
     FLOAT=NUMBER + FLOAT,
     CHS_3500=CHINESE_3500,
     # Older Version

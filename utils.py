@@ -135,8 +135,14 @@ class ImageUtils(object):
 
             if (len(rgb) > 3 and model.pre_replace_transparent) and not gif_handle:
                 background = PIL_Image.new('RGB', pil_image.size, (255, 255, 255))
-                background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
-                pil_image = background
+                try:
+                    background.paste(pil_image, (0, 0, size[0], size[1]), pil_image)
+                    pil_image = background
+                except:
+                    pil_image = pil_image.convert('RGB')
+
+            if len(pil_image.split()) > 3 and model.image_channel == 3:
+                pil_image = pil_image.convert('RGB')
 
             if model.pre_concat_frames != -1:
                 im = concat_frames(pil_image, model.pre_concat_frames)
