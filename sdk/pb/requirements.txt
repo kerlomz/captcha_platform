@@ -1,5 +1,5 @@
 tensorflow==1.14
 numpy
 pillow
-opencv-python==3.4.5.20
+opencv-python==3.4.7.28
 pyyaml>=3.13
