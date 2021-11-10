@@ -1,19 +1,23 @@
-FROM python:3.6.8-stretch as builder
+FROM python:3.7-slim as builder
 
-ADD . /app/
+ADD . /app
 
-WORKDIR /app/
+WORKDIR /app
 
-COPY requirements.txt /app/
+RUN apt update && apt install -y --no-install-recommends libgl1 libglib2.0-0 && \
+      rm -rf /var/lib/apt/lists/* && \
+      pip install --no-cache-dir --upgrade pip && \
+      pip install --no-cache-dir -r requirements.txt
 
-# timezone
-ENV TZ=Asia/Shanghai
-
-RUN pip install --no-cache-dir --upgrade pip \
-     && pip install --no-cache-dir -r requirements.txt
-
+VOLUME ["/app/graph", "/app/model"]
+EXPOSE 19952
 
 ENTRYPOINT ["python3", "tornado_server.py"]
-EXPOSE 19952
+
 # run command:
-# docker run -d -p 19952:19952 [image:tag]
+# docker run -dit --name captcha \
+# -e TZ="$(cat /etc/timezone)" \
+# -v $PWD/graph:/app/graph \
+# -v $PWD/model:/app/model \
+# -p 19952:19952 \
+# [image:tag]
