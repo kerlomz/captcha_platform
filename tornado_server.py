@@ -43,7 +43,7 @@ sign = Signature(ServerType.TORNADO, system_config)
 arithmetic = Arithmetic()
 semaphore = asyncio.Semaphore(500)
 
-scheduler = BackgroundScheduler(timezone=utc)
+scheduler = BackgroundScheduler(timezone='Asia/Shanghai')
 
 
 class BaseHandler(RequestHandler):

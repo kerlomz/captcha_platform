@@ -4,7 +4,7 @@ Flask-Caching
 gevent-websocket
 tf-nightly
 pillow
-opencv-python
+opencv-python-headless
 numpy
 grpcio
 grpcio_tools
