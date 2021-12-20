@@ -14,7 +14,7 @@ This project is only for deployment models, If you need to train the model, plea
 
 
 # Start
-1. Install the python 3.7 environment (with pip)
+1. Install the python 3.9 environment (with pip)
 2. Install virtualenv ```pip3 install virtualenv```
 3. Create a separate virtual environment for the project:
     ```bash
@@ -31,22 +31,9 @@ This project is only for deployment models, If you need to train the model, plea
 1. Linux
     Deploy (Linux/Mac): 
 
-    1. Port: 5000
-    ```
-    pip install gunicorn
-    gunicorn -c deploy.conf.py flask_server:app
-    ```
-    2. Port: 19951
-    ```
-    python flask_server.py
-    ```
-    3. Port: 19952
+   Port: 19952
     ```
     python tornado_server.py
-    ```
-    4. Port: 19953
-    ```
-    python sanic_server.py
     ```
 
 2. Windows
